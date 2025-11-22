@@ -32,6 +32,12 @@ npm run dev
 npm run build
 ```
 
+## DeepL API 설정
+
+- 개발 중에는 앱 우측 상단 `Settings`에서 DeepL API 키를 입력하면 로컬 저장소에 저장되며, Vite 개발 서버(`/deepl-free|pro`) 프록시를 통해 바로 호출됩니다.
+- 운영 환경(Vercel 등)에서는 `/api/deepl` 서버리스 함수가 DeepL 요청을 중계합니다. 사용자 입력 키가 없다면 `DEEPL_API_KEY` 환경 변수를 설정해 기본 키를 사용할 수 있습니다.
+- 무료 키(`:fx`로 끝남)와 Pro 키 모두 지원하며, 호출 실패 시 자동으로 MyMemory 번역으로 폴백됩니다.
+
 ---
 
 ## Vercel 배포 가이드 (Deployment Guide)

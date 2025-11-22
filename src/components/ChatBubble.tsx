@@ -37,9 +37,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe }) => {
 
                 {/* Secondary Text (Other Language) */}
                 {secondaryText && (
-                    <p className={`text-xs mt-2 pt-2 border-t ${isMe ? 'border-white/20 text-cyan-100' : 'border-slate-500 text-slate-400'}`}>
-                        {secondaryText}
-                    </p>
+                    <div className={`text-xs mt-2 pt-2 border-t flex justify-between items-center ${isMe ? 'border-white/20 text-cyan-100' : 'border-slate-500 text-slate-400'}`}>
+                        <span>{secondaryText}</span>
+                        {message.translationSource && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ml-2 ${message.translationSource === 'DeepL'
+                                    ? 'bg-blue-500/20 text-blue-200 border border-blue-500/30'
+                                    : 'bg-slate-500/20 text-slate-400'
+                                }`}>
+                                {message.translationSource}
+                            </span>
+                        )}
+                    </div>
                 )}
             </div>
         </div>

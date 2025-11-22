@@ -90,8 +90,8 @@ const translateWithDeepL = async (text: string, targetLang: LanguageCode, apiKey
 /**
  * Translate text using dictionary first, then DeepL (if key provided), then MyMemory API as fallback
  */
-export const translate = async (text: string, targetLang: LanguageCode, apiKey?: string): Promise<string> => {
-    if (!text || !text.trim()) return text;
+export const translate = async (text: string, targetLang: LanguageCode, apiKey?: string): Promise<{ text: string; source: 'DeepL' | 'MyMemory' | 'Dictionary' | 'Error' }> => {
+    if (!text || !text.trim()) return { text, source: 'Dictionary' }; // Treat empty/same as dictionary or just ignore
 
     try {
         // Detect source language (simple heuristic)
@@ -99,8 +99,6 @@ export const translate = async (text: string, targetLang: LanguageCode, apiKey?:
 
         let sourceLang = 'en'; // default
         if (hasKorean) sourceLang = 'ko';
-        // ... other detections if needed, but MyMemory handles auto-detect well usually.
-        // DeepL also handles auto-detect of source.
 
         const targetLangCode = languageCodeMap[targetLang] || 'en';
 
@@ -112,7 +110,7 @@ export const translate = async (text: string, targetLang: LanguageCode, apiKey?:
             for (const key in KOREAN_TO_ENGLISH) {
                 if (text.includes(key)) {
                     console.log('[Translation] Using dictionary:', key, '→', KOREAN_TO_ENGLISH[key]);
-                    return KOREAN_TO_ENGLISH[key];
+                    return { text: KOREAN_TO_ENGLISH[key], source: 'Dictionary' };
                 }
             }
         } else if (sourceLang === 'en' && targetLangCode === 'ko') {
@@ -120,7 +118,7 @@ export const translate = async (text: string, targetLang: LanguageCode, apiKey?:
             for (const key in ENGLISH_TO_KOREAN) {
                 if (normalizedText.includes(key)) {
                     console.log('[Translation] Using dictionary:', key, '→', ENGLISH_TO_KOREAN[key]);
-                    return ENGLISH_TO_KOREAN[key];
+                    return { text: ENGLISH_TO_KOREAN[key], source: 'Dictionary' };
                 }
             }
         }
@@ -131,23 +129,14 @@ export const translate = async (text: string, targetLang: LanguageCode, apiKey?:
             const deepLResult = await translateWithDeepL(text, targetLang, apiKey);
             if (deepLResult) {
                 console.log('[Translation] DeepL success:', deepLResult);
-                return deepLResult;
+                return { text: deepLResult, source: 'DeepL' };
             }
             console.warn('[Translation] DeepL failed, falling back to MyMemory...');
         }
 
         // Call MyMemory API as fallback
         console.log('[Translation] Using MyMemory API for:', text);
-        // MyMemory expects 'ko|en' format
-        // We need to be careful with source lang detection for MyMemory if we want to be explicit,
-        // but usually 'Autodetect' works if we just provide target? 
-        // Actually MyMemory requires source|target.
-        // Let's use the existing logic for source lang code.
 
-        // Re-using the existing sourceLang logic from previous code (which I removed in this replacement block, so I need to put it back or ensure it's there)
-        // Wait, I am replacing the whole function. I need to make sure I have the source detection logic.
-
-        // Let's refine the source detection to match the original robust one
         const hasJapanese = /[ぁ-ゔ|ァ-ヴー|一-龯]/.test(text);
         const hasChinese = /[\u4e00-\u9fff]/.test(text);
 
@@ -156,7 +145,7 @@ export const translate = async (text: string, targetLang: LanguageCode, apiKey?:
         else if (hasChinese) sourceLang = 'zh';
 
         // Skip if source and target are the same
-        if (sourceLang === targetLangCode) return text;
+        if (sourceLang === targetLangCode) return { text, source: 'Dictionary' };
 
         const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLangCode}`;
 
@@ -165,14 +154,14 @@ export const translate = async (text: string, targetLang: LanguageCode, apiKey?:
 
         if (data.responseStatus === 200 && data.responseData?.translatedText) {
             console.log('[Translation] API result:', data.responseData.translatedText);
-            return data.responseData.translatedText;
+            return { text: data.responseData.translatedText, source: 'MyMemory' };
         }
 
         // Fallback if API fails
         console.warn('[Translation] API failed, returning fallback');
-        return `[번역 실패] ${text}`;
+        return { text: `[번역 실패] ${text}`, source: 'Error' };
     } catch (error) {
         console.error('[Translation] Error:', error);
-        return `[번역 오류] ${text}`;
+        return { text: `[번역 오류] ${text}`, source: 'Error' };
     }
 };

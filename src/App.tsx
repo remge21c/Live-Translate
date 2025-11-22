@@ -75,14 +75,15 @@ function App() {
 
     // Translate from source to target (async)
     // Pass deepLKey if available
-    const translated = await translate(text, targetLang, deepLKey);
+    const { text: translatedText, source: translationSource } = await translate(text, targetLang, deepLKey);
 
-    console.log('[addMockMessage] Translated:', translated);
+    console.log('[addMockMessage] Translated:', translatedText, 'Source:', translationSource);
 
     const newMessage: Message = {
       id: Date.now().toString(),
       text: text,
-      translatedText: translated,
+      translatedText,
+      translationSource,
       sender,
       timestamp: Date.now(),
       language: sourceLang,

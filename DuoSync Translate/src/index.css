@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+
+    /* Custom Scrollbar Styling - Natural Dark Theme */
+    .overflow-y-auto::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .overflow-y-auto::-webkit-scrollbar-track {
+        background: rgba(30, 41, 59, 0.3);
+        /* slate-800 with transparency */
+        border-radius: 10px;
+    }
+
+    .overflow-y-auto::-webkit-scrollbar-thumb {
+        background: rgba(71, 85, 105, 0.5);
+        /* slate-600 with transparency */
+        border-radius: 10px;
+        transition: background 0.2s ease;
+    }
+
+    .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 0.7);
+        /* slate-500 with transparency */
+    }
+
+    /* For Firefox */
+    .overflow-y-auto {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(71, 85, 105, 0.5) rgba(30, 41, 59, 0.3);
+    }
+
+    /* Hide scrollbar utility (already used in code) */
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}

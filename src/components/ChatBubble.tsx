@@ -8,45 +8,39 @@ interface ChatBubbleProps {
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe }) => {
     // Logic:
-    // "My Language" (Native) -> Always on the RIGHT.
-    // "Partner Language" (Foreign) -> Always on the LEFT.
+    // Align Right if I sent it (isMe).
+    // Align Left if Partner sent it (!isMe).
 
-    // If I sent the message (isMe):
-    //   Right: My Original Text
-    //   Left: Translated Text
-    // If Partner sent the message (!isMe):
-    //   Right: Translated Text (My Language)
-    //   Left: Their Original Text (Foreign Language)
+    // Content:
+    // We want to show both languages, but prioritize the "Viewer's Language".
+    // If isMe: My Original (Native) is Primary, Translated (Foreign) is Secondary.
+    // If !isMe: Translated (Native) is Primary, Their Original (Foreign) is Secondary.
 
-    const rightText = isMe ? message.text : message.translatedText;
-    const leftText = isMe ? message.translatedText : message.text;
-
-    console.log('[ChatBubble]', {
-        messageId: message.id,
-        sender: message.sender,
-        isMe,
-        originalText: message.text,
-        translatedText: message.translatedText,
-        leftText,
-        rightText
-    });
+    const primaryText = isMe ? message.text : message.translatedText;
+    const secondaryText = isMe ? message.translatedText : message.text;
 
     return (
-        <div className="flex w-full mb-6 items-end gap-4">
-            {/* Left Side (Foreign Language) */}
-            <div className="flex-1 flex justify-start">
-                {leftText && (
-                    <div className="bg-slate-700 text-slate-200 rounded-2xl rounded-tl-none p-3 shadow-md max-w-[90%]">
-                        <p className="text-sm font-medium leading-relaxed">{leftText}</p>
-                    </div>
-                )}
-            </div>
+        <div className={`flex w-full mb-4 ${isMe ? 'justify-end' : 'justify-start'}`}>
+            <div
+                className={`
+                    max-w-[80%] rounded-2xl p-4 shadow-md flex flex-col
+                    ${isMe
+                        ? 'bg-cyan-600 text-white rounded-tr-none'
+                        : 'bg-slate-700 text-slate-200 rounded-tl-none'
+                    }
+                `}
+            >
+                {/* Primary Text (Viewer's Language) */}
+                <p className="text-base font-medium leading-relaxed">
+                    {primaryText}
+                </p>
 
-            {/* Right Side (Native Language) */}
-            <div className="flex-1 flex justify-end">
-                <div className="bg-cyan-600 text-white rounded-2xl rounded-tr-none p-3 shadow-md max-w-[90%]">
-                    <p className="text-sm font-medium leading-relaxed">{rightText}</p>
-                </div>
+                {/* Secondary Text (Other Language) */}
+                {secondaryText && (
+                    <p className={`text-xs mt-2 pt-2 border-t ${isMe ? 'border-white/20 text-cyan-100' : 'border-slate-500 text-slate-400'}`}>
+                        {secondaryText}
+                    </p>
+                )}
             </div>
         </div>
     );

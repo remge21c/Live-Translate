@@ -39,27 +39,70 @@ const ENGLISH_TO_KOREAN: Record<string, string> = {
     'i understand': '알겠습니다',
 };
 
+// DeepL Language Codes
+const deepLCodeMap: Record<LanguageCode, string> = {
+    'ko-KR': 'KO',
+    'en-US': 'EN-US',
+    'ja-JP': 'JA',
+    'zh-CN': 'ZH',
+};
+
 /**
- * Translate text using dictionary first, then MyMemory API as fallback
+ * Translate text using DeepL API
  */
-export const translate = async (text: string, targetLang: LanguageCode): Promise<string> => {
+const translateWithDeepL = async (text: string, targetLang: LanguageCode, apiKey: string): Promise<string | null> => {
+    try {
+        const isFree = apiKey.endsWith(':fx');
+        const endpoint = isFree ? '/deepl-free/v2/translate' : '/deepl-pro/v2/translate';
+
+        const targetLangCode = deepLCodeMap[targetLang];
+
+        const params = new URLSearchParams();
+        params.append('auth_key', apiKey);
+        params.append('text', text);
+        params.append('target_lang', targetLangCode);
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: params,
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[DeepL] API Error:', response.status, errorText);
+            return null;
+        }
+
+        const data = await response.json();
+        if (data.translations && data.translations.length > 0) {
+            return data.translations[0].text;
+        }
+        return null;
+    } catch (error) {
+        console.error('[DeepL] Network/Parsing Error:', error);
+        return null;
+    }
+};
+
+/**
+ * Translate text using dictionary first, then DeepL (if key provided), then MyMemory API as fallback
+ */
+export const translate = async (text: string, targetLang: LanguageCode, apiKey?: string): Promise<string> => {
     if (!text || !text.trim()) return text;
 
     try {
         // Detect source language (simple heuristic)
         const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text);
-        const hasJapanese = /[ぁ-ゔ|ァ-ヴー|一-龯]/.test(text);
-        const hasChinese = /[\u4e00-\u9fff]/.test(text);
 
         let sourceLang = 'en'; // default
         if (hasKorean) sourceLang = 'ko';
-        else if (hasJapanese) sourceLang = 'ja';
-        else if (hasChinese) sourceLang = 'zh';
+        // ... other detections if needed, but MyMemory handles auto-detect well usually.
+        // DeepL also handles auto-detect of source.
 
         const targetLangCode = languageCodeMap[targetLang] || 'en';
-
-        // Skip if source and target are the same
-        if (sourceLang === targetLangCode) return text;
 
         // Try dictionary first for better quality on common phrases
         const normalizedText = text.trim().toLowerCase().replace(/[?.,!]/g, '');
@@ -82,8 +125,39 @@ export const translate = async (text: string, targetLang: LanguageCode): Promise
             }
         }
 
+        // Try DeepL if API key is present
+        if (apiKey) {
+            console.log('[Translation] Attempting DeepL...');
+            const deepLResult = await translateWithDeepL(text, targetLang, apiKey);
+            if (deepLResult) {
+                console.log('[Translation] DeepL success:', deepLResult);
+                return deepLResult;
+            }
+            console.warn('[Translation] DeepL failed, falling back to MyMemory...');
+        }
+
         // Call MyMemory API as fallback
-        console.log('[Translation] Using API for:', text);
+        console.log('[Translation] Using MyMemory API for:', text);
+        // MyMemory expects 'ko|en' format
+        // We need to be careful with source lang detection for MyMemory if we want to be explicit,
+        // but usually 'Autodetect' works if we just provide target? 
+        // Actually MyMemory requires source|target.
+        // Let's use the existing logic for source lang code.
+
+        // Re-using the existing sourceLang logic from previous code (which I removed in this replacement block, so I need to put it back or ensure it's there)
+        // Wait, I am replacing the whole function. I need to make sure I have the source detection logic.
+
+        // Let's refine the source detection to match the original robust one
+        const hasJapanese = /[ぁ-ゔ|ァ-ヴー|一-龯]/.test(text);
+        const hasChinese = /[\u4e00-\u9fff]/.test(text);
+
+        if (hasKorean) sourceLang = 'ko';
+        else if (hasJapanese) sourceLang = 'ja';
+        else if (hasChinese) sourceLang = 'zh';
+
+        // Skip if source and target are the same
+        if (sourceLang === targetLangCode) return text;
+
         const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLangCode}`;
 
         const response = await fetch(url);

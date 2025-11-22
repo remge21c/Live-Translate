@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, Settings, X } from 'lucide-react';
 import { useAudio } from './hooks/useAudio';
 import { AudioVisualizer } from './components/AudioVisualizer';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
@@ -13,6 +13,22 @@ function App() {
   const [myLanguage, setMyLanguage] = useState<LanguageCode>('ko-KR');
   const [partnerLanguage, setPartnerLanguage] = useState<LanguageCode>('en-US');
   const [messages, setMessages] = useState<Message[]>([]);
+
+  // DeepL API Key State
+  const [deepLKey, setDeepLKey] = useState<string>('');
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Load API Key from localStorage
+  useEffect(() => {
+    const savedKey = localStorage.getItem('deepLKey');
+    if (savedKey) setDeepLKey(savedKey);
+  }, []);
+
+  // Save API Key to localStorage
+  const handleSaveKey = (key: string) => {
+    setDeepLKey(key);
+    localStorage.setItem('deepLKey', key);
+  };
 
   // Track which mic is active: 'me', 'partner', or null
   const [activeMic, setActiveMic] = useState<'me' | 'partner' | null>(null);
@@ -58,7 +74,8 @@ function App() {
     console.log('[addMockMessage] Target Lang:', targetLang);
 
     // Translate from source to target (async)
-    const translated = await translate(text, targetLang);
+    // Pass deepLKey if available
+    const translated = await translate(text, targetLang, deepLKey);
 
     console.log('[addMockMessage] Translated:', translated);
 
@@ -94,7 +111,55 @@ function App() {
         <div className="absolute top-0 left-0 z-50 p-2 bg-black/50 text-[10px] pointer-events-none">
           <p>Status: {activeMic ? `Listening (${activeMic} - ${currentLanguage})` : 'Idle'}</p>
           <p>Vol: {volume.toFixed(1)}</p>
+          <p>DeepL: {deepLKey ? 'Active' : 'Inactive'}</p>
         </div>
+
+        {/* Settings Button */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className="absolute top-4 right-4 z-50 p-2 bg-slate-800/80 rounded-full hover:bg-slate-700 transition-colors"
+        >
+          <Settings size={20} className="text-slate-400" />
+        </button>
+
+        {/* Settings Modal */}
+        {showSettings && (
+          <div className="absolute inset-0 z-[100] bg-black/80 flex justify-center items-center p-4">
+            <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-sm border border-slate-700 shadow-2xl">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white">Settings</h2>
+                <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-white">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">DeepL API Key</label>
+                  <input
+                    type="password"
+                    value={deepLKey}
+                    onChange={(e) => handleSaveKey(e.target.value)}
+                    placeholder="Paste your DeepL API Key here"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                  />
+                  <p className="text-xs text-slate-500 mt-2">
+                    Supports Free (ends with :fx) and Pro keys.
+                    <br />
+                    Key is saved locally in your browser.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-lg transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* --- Top Half (Partner) --- */}
         <div className="flex-1 flex flex-col bg-slate-800 rotate-180 border-b-2 border-cyan-400 transition-colors duration-300 relative overflow-hidden">

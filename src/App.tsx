@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff } from 'lucide-react';
 import { useAudio } from './hooks/useAudio';
 import { AudioVisualizer } from './components/AudioVisualizer';
@@ -8,6 +8,9 @@ import { ChatHistory } from './components/ChatHistory';
 import type { Message, LanguageCode } from './types';
 
 import { translate } from './utils/translation';
+
+const SILENCE_TIMEOUT_MS = 1800;
+const NOTICE_DURATION_MS = 2000;
 
 function App() {
   const [myLanguage, setMyLanguage] = useState<LanguageCode>('ko-KR');
@@ -26,28 +29,35 @@ function App() {
 
   // Track last processed transcript to avoid duplicates
   const lastProcessedRef = useRef<string>('');
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousActiveMicRef = useRef<'me' | 'partner' | null>(null);
+  const transcriptRef = useRef<string>('');
 
-  // Auto-commit on silence
-  useEffect(() => {
-    if (!isListening || !transcript || !activeMic) return;
+  const [systemNotice, setSystemNotice] = useState<string | null>(null);
 
-    // Skip if we already processed this exact transcript
-    if (transcript === lastProcessedRef.current) return;
+  const showNotice = useCallback((message: string) => {
+    if (typeof window === 'undefined') return;
+    if (noticeTimerRef.current) {
+      window.clearTimeout(noticeTimerRef.current);
+      noticeTimerRef.current = null;
+    }
 
-    const timer = setTimeout(async () => {
-      if (transcript.trim().length > 0 && transcript !== lastProcessedRef.current) {
-        lastProcessedRef.current = transcript;
-        await addMockMessage(transcript, activeMic);
-        resetTranscript();
-      }
-    }, 1500);
+    setSystemNotice(message);
+    noticeTimerRef.current = window.setTimeout(() => {
+      setSystemNotice(null);
+      noticeTimerRef.current = null;
+    }, NOTICE_DURATION_MS);
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [transcript, isListening, activeMic]);
+  const clearSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+  }, []);
 
-  // Add message with translation
-  const addMockMessage = async (text: string, sender: 'me' | 'partner') => {
-    // Determine source and target languages
+  const addMockMessage = useCallback(async (text: string, sender: 'me' | 'partner') => {
     const sourceLang = sender === 'me' ? myLanguage : partnerLanguage;
     const targetLang = sender === 'me' ? partnerLanguage : myLanguage;
 
@@ -58,8 +68,6 @@ function App() {
     console.log('[addMockMessage] Target Lang:', targetLang);
     console.log('[addMockMessage] Using serverless function for translation');
 
-    // Translate from source to target (async)
-    // translate 함수가 내부에서 환경 변수를 읽으므로 파라미터 전달 불필요
     const { text: translatedText, source: translationSource } = await translate(text, targetLang);
 
     console.log('[addMockMessage] Translated:', translatedText, 'Source:', translationSource);
@@ -76,7 +84,73 @@ function App() {
 
     console.log('[addMockMessage] Message object:', newMessage);
     setMessages(prev => [...prev, newMessage]);
-  };
+  }, [myLanguage, partnerLanguage]);
+
+  const commitTranscript = useCallback(async (rawText: string, sender: 'me' | 'partner', reason: 'silence' | 'mic-off') => {
+    const text = rawText.trim();
+    if (!text) return;
+    if (text === lastProcessedRef.current) return;
+
+    lastProcessedRef.current = text;
+    await addMockMessage(text, sender);
+    resetTranscript();
+
+    if (reason === 'silence') {
+      showNotice('자동 정지 감지: 번역을 전송했습니다');
+    }
+  }, [addMockMessage, resetTranscript, showNotice]);
+
+  useEffect(() => {
+    transcriptRef.current = transcript;
+    if (!transcript) {
+      lastProcessedRef.current = '';
+    }
+  }, [transcript]);
+
+  useEffect(() => {
+    const previous = previousActiveMicRef.current;
+    if (previous && previous !== activeMic) {
+      clearSilenceTimer();
+      void commitTranscript(transcriptRef.current, previous, 'mic-off');
+    }
+    previousActiveMicRef.current = activeMic;
+  }, [activeMic, commitTranscript, clearSilenceTimer]);
+
+  // Auto-commit on silence (timer-based)
+  useEffect(() => {
+    if (!isListening || !activeMic) {
+      clearSilenceTimer();
+      return;
+    }
+
+    const trimmed = transcript.trim();
+    if (!trimmed || trimmed === lastProcessedRef.current) {
+      return;
+    }
+
+    if (typeof window === 'undefined') return;
+
+    clearSilenceTimer();
+    const sender = activeMic;
+    silenceTimerRef.current = window.setTimeout(() => {
+      if (!sender) return;
+      void commitTranscript(trimmed, sender, 'silence');
+    }, SILENCE_TIMEOUT_MS);
+
+    return () => {
+      clearSilenceTimer();
+    };
+  }, [transcript, isListening, activeMic, commitTranscript, clearSilenceTimer]);
+
+  useEffect(() => {
+    return () => {
+      clearSilenceTimer();
+      if (typeof window !== 'undefined' && noticeTimerRef.current) {
+        window.clearTimeout(noticeTimerRef.current);
+        noticeTimerRef.current = null;
+      }
+    };
+  }, [clearSilenceTimer]);
 
   // Effect to simulate adding message when transcript updates (debounce or wait for pause would be better)
   // For this demo, let's just show the transcript in the "Live" box and not auto-add to history to avoid spam.
@@ -123,20 +197,10 @@ function App() {
           {/* Partner Mic Button (Fixed at Bottom) */}
           <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30">
             <button
-              onClick={async () => {
+              onClick={() => {
                 if (activeMic === 'partner') {
-                  // Stop partner mic
-                  if (transcript) {
-                    await addMockMessage(transcript, 'partner');
-                    resetTranscript();
-                  }
                   setActiveMic(null);
                 } else {
-                  // Activate partner mic (automatically deactivates 'me' mic if active)
-                  if (activeMic === 'me' && transcript) {
-                    await addMockMessage(transcript, 'me');
-                    resetTranscript();
-                  }
                   setActiveMic('partner');
                 }
               }}
@@ -168,20 +232,10 @@ function App() {
           {/* My Mic Button (Fixed at Bottom) */}
           <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30">
             <button
-              onClick={async () => {
+              onClick={() => {
                 if (activeMic === 'me') {
-                  // Stop my mic
-                  if (transcript) {
-                    await addMockMessage(transcript, 'me');
-                    resetTranscript();
-                  }
                   setActiveMic(null);
                 } else {
-                  // Activate my mic (automatically deactivates partner mic if active)
-                  if (activeMic === 'partner' && transcript) {
-                    await addMockMessage(transcript, 'partner');
-                    resetTranscript();
-                  }
                   setActiveMic('me');
                 }
               }}
@@ -205,8 +259,16 @@ function App() {
           </div>
         </div>
 
+        {systemNotice && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
+            <div className="rounded-full bg-black/70 px-4 py-1 text-xs font-medium text-white shadow-lg">
+              {systemNotice}
+            </div>
+          </div>
+        )}
+
         {/* Centered Visualizer - Between both chat areas */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-8 flex justify-center items-center pointer-events-none z-40">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-8 flex justify-center items-center pointer-events-none z-30">
           <AudioVisualizer isListening={isListening} volume={volume} />
         </div>
       </div>

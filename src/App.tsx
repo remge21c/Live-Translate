@@ -93,12 +93,14 @@ function App() {
       {/* Main Container - Responsive with max width */}
       <div className="h-full w-full max-w-[480px] sm:max-w-[640px] md:max-w-[768px] lg:max-w-[1024px] bg-slate-900 flex flex-col relative overflow-hidden">
 
-        {/* DEBUG OVERLAY */}
+        {/* DEBUG OVERLAY - 주석 처리됨 (화면에 표시되지 않음) */}
+        {/* 
         <div className="absolute top-0 left-0 z-50 p-2 bg-black/50 text-[10px] pointer-events-none">
           <p>Status: {activeMic ? `Listening (${activeMic} - ${currentLanguage})` : 'Idle'}</p>
           <p>Vol: {volume.toFixed(1)}</p>
           <p>DeepL: Serverless</p>
         </div>
+        */}
 
         {/* --- Top Half (Partner) --- */}
         <div className="flex-1 flex flex-col bg-slate-800 rotate-180 border-b-2 border-cyan-400 transition-colors duration-300 relative overflow-hidden">

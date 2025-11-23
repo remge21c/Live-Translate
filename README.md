@@ -93,3 +93,30 @@ Vite 프로젝트는 Vercel이 자동으로 설정을 감지하므로 별도의 
 
 -   **마이크 권한**: 배포된 사이트(`https://...`)는 HTTPS가 적용되므로 마이크 권한 요청이 정상적으로 작동합니다. (HTTP에서는 작동하지 않음)
 -   **브라우저 호환성**: Web Speech API는 Chrome, Edge, Safari 등 최신 브라우저에서 가장 잘 작동합니다.
+
+## 디버그 모드
+
+### 상태 표시 (DEBUG OVERLAY)
+
+메인페이지 상단 왼쪽에 있는 상태 표시(DEBUG OVERLAY)는 현재 주석 처리되어 화면에 표시되지 않습니다.
+
+**위치**: `src/App.tsx` 파일 내부
+
+**표시 내용** (주석 처리됨):
+- Status: 현재 음성 인식 상태 (Listening/Idle)
+- Vol: 현재 음성 볼륨 레벨
+- DeepL: 번역 엔진 상태 (Serverless)
+
+**활성화 방법**:
+`src/App.tsx` 파일에서 해당 부분의 주석을 제거하면 다시 표시됩니다.
+
+```tsx
+{/* DEBUG OVERLAY - 주석 처리됨 (화면에 표시되지 않음) */}
+{/* 
+<div className="absolute top-0 left-0 z-50 p-2 bg-black/50 text-[10px] pointer-events-none">
+  <p>Status: {activeMic ? `Listening (${activeMic} - ${currentLanguage})` : 'Idle'}</p>
+  <p>Vol: {volume.toFixed(1)}</p>
+  <p>DeepL: Serverless</p>
+</div>
+*/}
+```

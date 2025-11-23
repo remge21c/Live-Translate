@@ -124,7 +124,7 @@ function App() {
           </div>
 
           {/* Partner Chat History - Scrollable */}
-          <div className="flex-1 overflow-hidden px-4 pt-20 pb-24">
+          <div className="flex-1 overflow-hidden px-4 pt-10 pb-12">
             <div className="h-full bg-slate-700/40 rounded-2xl border border-slate-600/50 overflow-y-auto shadow-inner backdrop-blur-sm">
               <ChatHistory messages={messages} viewer="partner" />
             </div>
@@ -169,7 +169,7 @@ function App() {
 
 
           {/* My Chat History - Scrollable */}
-          <div className="flex-1 overflow-hidden px-4 pt-24 pb-24">
+          <div className="flex-1 overflow-hidden px-4 pt-12 pb-12">
             <div className="h-full bg-slate-800/60 rounded-2xl border border-slate-700 overflow-y-auto shadow-inner backdrop-blur-sm">
               <ChatHistory messages={messages} viewer="me" />
             </div>

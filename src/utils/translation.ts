@@ -158,6 +158,7 @@ const translateWithDeepL = async (
 
 /**
  * Translate text using dictionary first, then DeepL (if a key is provided), then MyMemory API as fallback.
+ * DeepL API key is read from environment variable VITE_DEEPL_API_KEY if not provided as parameter.
  */
 export const translate = async (
     text: string,
@@ -193,10 +194,11 @@ export const translate = async (
             }
         }
 
-        // DeepL attempt
-        if (apiKey) {
+        // DeepL attempt - 환경 변수에서 API 키 읽기 (파라미터가 없을 경우)
+        const deepLApiKey = apiKey || import.meta.env.VITE_DEEPL_API_KEY || '';
+        if (deepLApiKey) {
             console.log('[Translation] Attempting DeepL...');
-            const deepLResult = await translateWithDeepL(text, targetLang, apiKey);
+            const deepLResult = await translateWithDeepL(text, targetLang, deepLApiKey);
             if (deepLResult) {
                 console.log('[Translation] DeepL success:', deepLResult);
                 return { text: deepLResult, source: 'DeepL' };

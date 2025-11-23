@@ -14,21 +14,9 @@ function App() {
   const [partnerLanguage, setPartnerLanguage] = useState<LanguageCode>('en-US');
   const [messages, setMessages] = useState<Message[]>([]);
 
-  // DeepL API Key State
-  const [deepLKey, setDeepLKey] = useState<string>('');
+  // DeepL API Key from environment variable
+  const deepLKey = import.meta.env.VITE_DEEPL_API_KEY || '';
   const [showSettings, setShowSettings] = useState(false);
-
-  // Load API Key from localStorage
-  useEffect(() => {
-    const savedKey = localStorage.getItem('deepLKey');
-    if (savedKey) setDeepLKey(savedKey);
-  }, []);
-
-  // Save API Key to localStorage
-  const handleSaveKey = (key: string) => {
-    setDeepLKey(key);
-    localStorage.setItem('deepLKey', key);
-  };
 
   // Track which mic is active: 'me', 'partner', or null
   const [activeMic, setActiveMic] = useState<'me' | 'partner' | null>(null);
@@ -72,10 +60,11 @@ function App() {
     console.log('[addMockMessage] Text:', text);
     console.log('[addMockMessage] Source Lang:', sourceLang);
     console.log('[addMockMessage] Target Lang:', targetLang);
+    console.log('[addMockMessage] DeepL API Key:', deepLKey ? 'Loaded from .env' : 'Not found');
 
     // Translate from source to target (async)
-    // Pass deepLKey if available
-    const { text: translatedText, source: translationSource } = await translate(text, targetLang, deepLKey);
+    // translate 함수가 내부에서 환경 변수를 읽으므로 파라미터 전달 불필요
+    const { text: translatedText, source: translationSource } = await translate(text, targetLang);
 
     console.log('[addMockMessage] Translated:', translatedText, 'Source:', translationSource);
 
@@ -112,7 +101,7 @@ function App() {
         <div className="absolute top-0 left-0 z-50 p-2 bg-black/50 text-[10px] pointer-events-none">
           <p>Status: {activeMic ? `Listening (${activeMic} - ${currentLanguage})` : 'Idle'}</p>
           <p>Vol: {volume.toFixed(1)}</p>
-          <p>DeepL: {deepLKey ? 'Active' : 'Inactive'}</p>
+          <p>DeepL: {deepLKey ? 'Active' : 'Inactive (check .env)'}</p>
         </div>
 
         {/* Settings Button */}
@@ -137,17 +126,19 @@ function App() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm text-slate-400 mb-1">DeepL API Key</label>
-                  <input
-                    type="password"
-                    value={deepLKey}
-                    onChange={(e) => handleSaveKey(e.target.value)}
-                    placeholder="Paste your DeepL API Key here"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition-colors"
-                  />
+                  <div className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white">
+                    {deepLKey ? (
+                      <span className="text-green-400">✓ API Key loaded from .env</span>
+                    ) : (
+                      <span className="text-yellow-400">⚠ API Key not found</span>
+                    )}
+                  </div>
                   <p className="text-xs text-slate-500 mt-2">
-                    Supports Free (ends with :fx) and Pro keys.
+                    API Key is managed in <code className="bg-slate-800 px-1 rounded">.env</code> file.
                     <br />
-                    Key is saved locally in your browser.
+                    Set <code className="bg-slate-800 px-1 rounded">VITE_DEEPL_API_KEY</code> in your .env file.
+                    <br />
+                    Supports Free (ends with :fx) and Pro keys.
                   </p>
                 </div>
 

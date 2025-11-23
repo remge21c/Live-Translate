@@ -101,7 +101,7 @@ function App() {
   // For now, let's keep the UI structure ready.
 
   return (
-    <div className="h-screen w-screen bg-slate-900 text-white overflow-hidden flex justify-center items-center">
+    <div className="h-[90vh] w-screen bg-slate-900 text-white overflow-hidden flex justify-center items-center">
       {/* Main Container - Responsive with max width */}
       <div className="h-full w-full max-w-[480px] sm:max-w-[640px] md:max-w-[768px] lg:max-w-[1024px] bg-slate-900 flex flex-col relative overflow-hidden">
 

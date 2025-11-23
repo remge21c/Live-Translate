@@ -1,44 +1,5 @@
 import type { LanguageCode } from '../types';
 
-// Convert our language codes to API format
-const languageCodeMap: Record<LanguageCode, string> = {
-    'ko-KR': 'ko',
-    'en-US': 'en',
-    'ja-JP': 'ja',
-    'zh-CN': 'zh',
-};
-
-// Dictionary for common phrases (fallback for API)
-const KOREAN_TO_ENGLISH: Record<string, string> = {
-    '안녕하세요': 'Hello',
-    '반갑습니다': 'Nice to meet you',
-    '잘 지내시나요': 'How are you?',
-    '감사합니다': 'Thank you',
-    '이름이 뭐예요': 'What is your name?',
-    '안녕': 'Hi',
-    '배고파요': "I'm hungry",
-    '배고파': "I'm hungry",
-    '목말라요': "I'm thirsty",
-    '좋아요': 'Good',
-    '괜찮아요': "It's okay",
-    '알겠습니다': 'I understand',
-};
-
-const ENGLISH_TO_KOREAN: Record<string, string> = {
-    hello: '안녕하세요',
-    hi: '안녕',
-    'how are you': '잘 지내시나요?',
-    'nice to meet you': '반갑습니다',
-    'thank you': '감사합니다',
-    'what is your name': '이름이 뭐예요?',
-    "i'm hungry": '배고파요',
-    "im hungry": '배고파요',
-    "i'm thirsty": '목말라요',
-    good: '좋아요',
-    "it's okay": '괜찮아요',
-    'i understand': '알겠습니다',
-};
-
 // DeepL Language Codes (target_lang expects two‑letter codes)
 const deepLCodeMap: Record<LanguageCode, string> = {
     'ko-KR': 'KO',

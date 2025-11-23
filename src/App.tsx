@@ -201,7 +201,10 @@ function App() {
 
       <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-10 pb-12' : 'pt-10 pb-10'}`}>
         <div className="h-full bg-slate-700/40 rounded-2xl border border-slate-600/50 overflow-y-auto shadow-inner backdrop-blur-sm">
-          <ChatHistory messages={messages} viewer="partner" />
+          <ChatHistory
+            messages={messages}
+            viewer={variant === 'landscape' ? 'me' : 'partner'}
+          />
         </div>
       </div>
 

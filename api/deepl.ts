@@ -43,8 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const body = parseRequestBody(req);
         const text = body.text?.toString().trim();
         const targetLang = body.targetLang?.toString().toUpperCase();
-        // 클라이언트에서 전달받은 API 키 또는 서버 환경 변수 사용
-        const apiKey = (body.apiKey?.toString().trim() || process.env.DEEPL_API_KEY || '').trim();
+        // 서버 환경 변수에서만 API 키 사용 (보안 강화)
+        const apiKey = (process.env.DEEPL_API_KEY || '').trim();
         const sourceLang = body.sourceLang?.toString().toUpperCase();
 
         console.log('[api/deepl] Request:', {
@@ -60,8 +60,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!apiKey) {
             console.error('[api/deepl] API key missing');
-            return res.status(400).json({ 
-                error: 'DeepL API 키가 필요합니다. 클라이언트에서 전달하거나 Vercel 환경 변수 DEEPL_API_KEY를 설정하세요.' 
+            return res.status(500).json({ 
+                error: 'DeepL API 키가 서버에 설정되지 않았습니다. Vercel 환경 변수 DEEPL_API_KEY를 설정하세요.' 
             });
         }
 

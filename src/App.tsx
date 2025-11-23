@@ -14,18 +14,6 @@ function App() {
   const [partnerLanguage, setPartnerLanguage] = useState<LanguageCode>('en-US');
   const [messages, setMessages] = useState<Message[]>([]);
 
-  // DeepL API Key from environment variable
-  const deepLKey = import.meta.env.VITE_DEEPL_API_KEY || '';
-  
-  // Debug: 환경 변수 확인
-  useEffect(() => {
-    console.log('[App] Environment check:', {
-      hasDeepLKey: !!deepLKey,
-      keyPreview: deepLKey ? '***' + deepLKey.slice(-4) : 'not found',
-      allEnvKeys: Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'))
-    });
-  }, []);
-
   // Track which mic is active: 'me', 'partner', or null
   const [activeMic, setActiveMic] = useState<'me' | 'partner' | null>(null);
 
@@ -68,7 +56,7 @@ function App() {
     console.log('[addMockMessage] Text:', text);
     console.log('[addMockMessage] Source Lang:', sourceLang);
     console.log('[addMockMessage] Target Lang:', targetLang);
-    console.log('[addMockMessage] DeepL API Key:', deepLKey ? 'Loaded from .env' : 'Not found');
+    console.log('[addMockMessage] Using serverless function for translation');
 
     // Translate from source to target (async)
     // translate 함수가 내부에서 환경 변수를 읽으므로 파라미터 전달 불필요
@@ -109,7 +97,7 @@ function App() {
         <div className="absolute top-0 left-0 z-50 p-2 bg-black/50 text-[10px] pointer-events-none">
           <p>Status: {activeMic ? `Listening (${activeMic} - ${currentLanguage})` : 'Idle'}</p>
           <p>Vol: {volume.toFixed(1)}</p>
-          <p>DeepL: {deepLKey ? 'Active' : 'Inactive (check .env)'}</p>
+          <p>DeepL: Serverless</p>
         </div>
 
         {/* --- Top Half (Partner) --- */}

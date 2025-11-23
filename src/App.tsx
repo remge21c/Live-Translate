@@ -34,6 +34,9 @@ function App() {
   const { volume } = useAudio(isListening);
   const { transcript, resetTranscript } = useSpeechRecognition(isListening, currentLanguage);
   const isLandscape = layoutMode === 'landscape';
+  const containerWidthClasses = isLandscape
+    ? 'max-w-none px-4'
+    : 'max-w-[480px] sm:max-w-[640px] md:max-w-[768px] lg:max-w-[1024px]';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -60,6 +63,7 @@ function App() {
 
   // Track last processed transcript to avoid duplicates
   const lastProcessedRef = useRef<string>('');
+  const lastProcessedAtRef = useRef<number>(0);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousActiveMicRef = useRef<'me' | 'partner' | null>(null);
@@ -120,9 +124,15 @@ function App() {
   const commitTranscript = useCallback(async (rawText: string, sender: 'me' | 'partner', reason: 'silence' | 'mic-off') => {
     const text = rawText.trim();
     if (!text) return;
-    if (text === lastProcessedRef.current) return;
+
+    const now = Date.now();
+    if (text === lastProcessedRef.current && now - lastProcessedAtRef.current < 2000) {
+      console.log('[commitTranscript] Skipping duplicate commit');
+      return;
+    }
 
     lastProcessedRef.current = text;
+    lastProcessedAtRef.current = now;
     await addMockMessage(text, sender);
     resetTranscript();
 
@@ -133,9 +143,6 @@ function App() {
 
   useEffect(() => {
     transcriptRef.current = transcript;
-    if (!transcript) {
-      lastProcessedRef.current = '';
-    }
   }, [transcript]);
 
   useEffect(() => {
@@ -155,7 +162,11 @@ function App() {
     }
 
     const trimmed = transcript.trim();
-    if (!trimmed || trimmed === lastProcessedRef.current) {
+    const now = Date.now();
+    if (
+      !trimmed ||
+      (trimmed === lastProcessedRef.current && now - lastProcessedAtRef.current < 2000)
+    ) {
       return;
     }
 
@@ -201,10 +212,7 @@ function App() {
 
       <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-10 pb-12' : 'pt-10 pb-10'}`}>
         <div className="h-full bg-slate-700/40 rounded-2xl border border-slate-600/50 overflow-y-auto shadow-inner backdrop-blur-sm">
-          <ChatHistory
-            messages={messages}
-            viewer={variant === 'landscape' ? 'me' : 'partner'}
-          />
+          <ChatHistory messages={messages} viewer="partner" />
         </div>
       </div>
 
@@ -284,7 +292,7 @@ function App() {
   return (
     <div className="h-[95vh] w-screen bg-slate-900 text-white overflow-hidden flex justify-center items-center">
       <div
-        className={`h-full w-full max-w-[480px] sm:max-w-[640px] md:max-w-[768px] lg:max-w-[1024px] bg-slate-900 flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} relative overflow-hidden`}
+        className={`h-full w-full ${containerWidthClasses} bg-slate-900 flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} relative overflow-hidden`}
       >
         {isLandscape ? (
           isSwapped ? (

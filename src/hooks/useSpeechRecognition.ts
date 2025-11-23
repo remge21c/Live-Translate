@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+const RECOVERABLE_ERRORS = new Set(['no-speech', 'aborted', 'audio-capture', 'network']);
+
 export interface SpeechRecognitionResult {
     transcript: string;
     isFinal: boolean;
@@ -11,11 +13,55 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     const recognitionRef = useRef<any>(null);
     const isListeningRef = useRef<boolean>(isListening);
     const previousLanguageRef = useRef<string>(language);
+    const restartTimeoutRef = useRef<number | null>(null);
+
+    const clearRestartTimeout = useCallback(() => {
+        if (restartTimeoutRef.current !== null) {
+            if (typeof window !== 'undefined') {
+                window.clearTimeout(restartTimeoutRef.current);
+            }
+            restartTimeoutRef.current = null;
+        }
+    }, []);
+
+    const scheduleRestart = useCallback(
+        (reason: string, delay = 350) => {
+            if (typeof window === 'undefined') return;
+            clearRestartTimeout();
+            restartTimeoutRef.current = window.setTimeout(() => {
+                restartTimeoutRef.current = null;
+
+                if (!isListeningRef.current || !recognitionRef.current) {
+                    return;
+                }
+
+                try {
+                    recognitionRef.current.start();
+                    console.log(`[SpeechRecognition] Restarted (${reason})`);
+                } catch (error) {
+                    const domError = error as DOMException;
+                    if (domError?.name === 'InvalidStateError') {
+                        console.log('[SpeechRecognition] Restart skipped - already running');
+                        return;
+                    }
+
+                    console.error(`[SpeechRecognition] Restart failed (${reason})`, error);
+                    if (isListeningRef.current) {
+                        scheduleRestart(reason, Math.min(delay + 250, 2000));
+                    }
+                }
+            }, delay);
+        },
+        [clearRestartTimeout],
+    );
 
     // Keep isListening in sync with ref
     useEffect(() => {
         isListeningRef.current = isListening;
-    }, [isListening]);
+        if (!isListening) {
+            clearRestartTimeout();
+        }
+    }, [isListening, clearRestartTimeout]);
 
     // Initialize recognition once
     useEffect(() => {
@@ -49,9 +95,22 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
 
         recognitionRef.current.onerror = (event: any) => {
             console.error('[SpeechRecognition] Error:', event.error);
-            // Don't restart on no-speech or aborted errors
-            if (event.error === 'no-speech' || event.error === 'aborted') {
+
+            if (!isListeningRef.current) {
                 return;
+            }
+
+            if (RECOVERABLE_ERRORS.has(event.error)) {
+                const delay = event.error === 'network' ? 1200 : 400;
+                scheduleRestart(`error:${event.error}`, delay);
+                return;
+            }
+
+            console.error('[SpeechRecognition] Fatal error - stopping recognition');
+            try {
+                recognitionRef.current?.stop();
+            } catch (stopError) {
+                console.error('[SpeechRecognition] Failed to stop after fatal error', stopError);
             }
         };
 
@@ -59,22 +118,21 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
         recognitionRef.current.onend = () => {
             console.log('[SpeechRecognition] Recognition ended, checking if should restart...');
             if (isListeningRef.current && recognitionRef.current) {
-                console.log('[SpeechRecognition] Restarting recognition...');
-                try {
-                    recognitionRef.current.start();
-                } catch (e) {
-                    console.error('[SpeechRecognition] Failed to restart:', e);
-                }
+                scheduleRestart('onend');
+            } else {
+                clearRestartTimeout();
             }
         };
 
         return () => {
+            clearRestartTimeout();
             if (recognitionRef.current) {
                 recognitionRef.current.onend = null; // Remove handler first
+                recognitionRef.current.onerror = null;
                 recognitionRef.current.stop();
             }
         };
-    }, []); // Only initialize once
+    }, [clearRestartTimeout, scheduleRestart]); // Only initialize once
 
     // Update language ONLY when it actually changes
     useEffect(() => {
@@ -94,33 +152,26 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
 
             // Restart if was listening
             if (wasListening) {
-                setTimeout(() => {
-                    if (recognitionRef.current && isListeningRef.current) {
-                        try {
-                            recognitionRef.current.start();
-                            console.log('[SpeechRecognition] Restarted with new language:', language);
-                        } catch (e) {
-                            console.error('[SpeechRecognition] Failed to restart after language change:', e);
-                        }
-                    }
-                }, 100);
+                scheduleRestart('language-change', 200);
             }
         }
-    }, [language, isListening]);
+    }, [language, isListening, scheduleRestart]);
 
     useEffect(() => {
         if (isListening && recognitionRef.current) {
             try {
                 recognitionRef.current.start();
                 console.log('[SpeechRecognition] Started');
+                clearRestartTimeout();
             } catch (e) {
                 console.log('[SpeechRecognition] Already started');
             }
         } else if (!isListening && recognitionRef.current) {
             recognitionRef.current.stop();
+            clearRestartTimeout();
             console.log('[SpeechRecognition] Stopped');
         }
-    }, [isListening]);
+    }, [isListening, clearRestartTimeout]);
 
     const resetTranscript = useCallback(() => {
         console.log('[SpeechRecognition] Resetting transcript...');

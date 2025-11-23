@@ -120,3 +120,10 @@ Vite 프로젝트는 Vercel이 자동으로 설정을 감지하므로 별도의 
 </div>
 */}
 ```
+
+## 음성 인식 안정화
+
+- Web Speech API는 `no-speech`, `audio-capture` 오류가 연속으로 발생하면 인식을 완전히 종료하는 버그가 있어, 3~4회 대화 후 마이크가 멈추곤 합니다.
+- `src/hooks/useSpeechRecognition.ts`에서 `RECOVERABLE_ERRORS`(no-speech, aborted, audio-capture, network)를 감지하면 짧은 지연 후 자동으로 마이크를 재시작하도록 개선했습니다.
+- 재시작 시에는 백오프(backoff)를 적용하고, 더 이상 인식 중이 아닐 경우에는 재시작을 시도하지 않아 불필요한 DOMException을 방지합니다.
+- 위 전략 덕분에 마이크 버튼이 켜져 있는 동안에는 연속 대화가 가능하며, 브라우저가 치명적인 오류(not-allowed 등)를 반환하는 경우에만 완전히 중단됩니다.

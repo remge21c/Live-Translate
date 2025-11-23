@@ -196,6 +196,12 @@ export const translate = async (
 
         // DeepL attempt - 환경 변수에서 API 키 읽기 (파라미터가 없을 경우)
         const deepLApiKey = apiKey || import.meta.env.VITE_DEEPL_API_KEY || '';
+        console.log('[Translation] DeepL API Key check:', {
+            provided: !!apiKey,
+            fromEnv: !!import.meta.env.VITE_DEEPL_API_KEY,
+            envValue: import.meta.env.VITE_DEEPL_API_KEY ? '***' + import.meta.env.VITE_DEEPL_API_KEY.slice(-4) : 'not found',
+            finalKey: deepLApiKey ? '***' + deepLApiKey.slice(-4) : 'not found'
+        });
         if (deepLApiKey) {
             console.log('[Translation] Attempting DeepL...');
             const deepLResult = await translateWithDeepL(text, targetLang, deepLApiKey);
@@ -204,6 +210,8 @@ export const translate = async (
                 return { text: deepLResult, source: 'DeepL' };
             }
             console.warn('[Translation] DeepL failed, falling back to MyMemory...');
+        } else {
+            console.warn('[Translation] DeepL API Key not found. Check .env file and restart dev server.');
         }
 
         // MyMemory fallback

@@ -5,6 +5,8 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), basicSsl()],
+  // 환경 변수 파일 위치 명시
+  envDir: '.',
   server: {
     host: true,
     proxy: {

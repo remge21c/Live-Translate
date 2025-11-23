@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Settings, X } from 'lucide-react';
+import { Mic, MicOff } from 'lucide-react';
 import { useAudio } from './hooks/useAudio';
 import { AudioVisualizer } from './components/AudioVisualizer';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
@@ -16,7 +16,15 @@ function App() {
 
   // DeepL API Key from environment variable
   const deepLKey = import.meta.env.VITE_DEEPL_API_KEY || '';
-  const [showSettings, setShowSettings] = useState(false);
+  
+  // Debug: 환경 변수 확인
+  useEffect(() => {
+    console.log('[App] Environment check:', {
+      hasDeepLKey: !!deepLKey,
+      keyPreview: deepLKey ? '***' + deepLKey.slice(-4) : 'not found',
+      allEnvKeys: Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'))
+    });
+  }, []);
 
   // Track which mic is active: 'me', 'partner', or null
   const [activeMic, setActiveMic] = useState<'me' | 'partner' | null>(null);
@@ -103,55 +111,6 @@ function App() {
           <p>Vol: {volume.toFixed(1)}</p>
           <p>DeepL: {deepLKey ? 'Active' : 'Inactive (check .env)'}</p>
         </div>
-
-        {/* Settings Button */}
-        <button
-          onClick={() => setShowSettings(true)}
-          className="absolute top-4 right-4 z-50 p-2 bg-slate-800/80 rounded-full hover:bg-slate-700 transition-colors"
-        >
-          <Settings size={20} className="text-slate-400" />
-        </button>
-
-        {/* Settings Modal */}
-        {showSettings && (
-          <div className="absolute inset-0 z-[100] bg-black/80 flex justify-center items-center p-4">
-            <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-sm border border-slate-700 shadow-2xl">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Settings</h2>
-                <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-white">
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">DeepL API Key</label>
-                  <div className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white">
-                    {deepLKey ? (
-                      <span className="text-green-400">✓ API Key loaded from .env</span>
-                    ) : (
-                      <span className="text-yellow-400">⚠ API Key not found</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-2">
-                    API Key is managed in <code className="bg-slate-800 px-1 rounded">.env</code> file.
-                    <br />
-                    Set <code className="bg-slate-800 px-1 rounded">VITE_DEEPL_API_KEY</code> in your .env file.
-                    <br />
-                    Supports Free (ends with :fx) and Pro keys.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-lg transition-colors"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* --- Top Half (Partner) --- */}
         <div className="flex-1 flex flex-col bg-slate-800 rotate-180 border-b-2 border-cyan-400 transition-colors duration-300 relative overflow-hidden">

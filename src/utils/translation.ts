@@ -157,7 +157,7 @@ const translateWithDeepL = async (
 };
 
 /**
- * Translate text using dictionary first, then DeepL (if a key is provided), then MyMemory API as fallback.
+ * Translate text using DeepL API only.
  * DeepL API key is read from environment variable VITE_DEEPL_API_KEY if not provided as parameter.
  */
 export const translate = async (
@@ -170,31 +170,7 @@ export const translate = async (
     }
 
     try {
-        // Simple source‑language detection
-        const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text);
-        let sourceLang = hasKorean ? 'ko' : 'en';
-
-        const targetLangCode = languageCodeMap[targetLang] || 'en';
-        const normalizedText = text.trim().toLowerCase().replace(/[?.,!]/g, '');
-
-        // Dictionary shortcuts
-        if (sourceLang === 'ko' && targetLangCode === 'en') {
-            for (const key in KOREAN_TO_ENGLISH) {
-                if (text.includes(key)) {
-                    console.log('[Translation] Using dictionary:', key, '→', KOREAN_TO_ENGLISH[key]);
-                    return { text: KOREAN_TO_ENGLISH[key], source: 'Dictionary' };
-                }
-            }
-        } else if (sourceLang === 'en' && targetLangCode === 'ko') {
-            for (const key in ENGLISH_TO_KOREAN) {
-                if (normalizedText.includes(key)) {
-                    console.log('[Translation] Using dictionary:', key, '→', ENGLISH_TO_KOREAN[key]);
-                    return { text: ENGLISH_TO_KOREAN[key], source: 'Dictionary' };
-                }
-            }
-        }
-
-        // DeepL attempt - 환경 변수에서 API 키 읽기 (파라미터가 없을 경우)
+        // DeepL API 키 확인 - 환경 변수에서 읽기 (파라미터가 없을 경우)
         const deepLApiKey = apiKey || import.meta.env.VITE_DEEPL_API_KEY || '';
         console.log('[Translation] DeepL API Key check:', {
             provided: !!apiKey,
@@ -202,40 +178,23 @@ export const translate = async (
             envValue: import.meta.env.VITE_DEEPL_API_KEY ? '***' + import.meta.env.VITE_DEEPL_API_KEY.slice(-4) : 'not found',
             finalKey: deepLApiKey ? '***' + deepLApiKey.slice(-4) : 'not found'
         });
-        if (deepLApiKey) {
-            console.log('[Translation] Attempting DeepL...');
-            const deepLResult = await translateWithDeepL(text, targetLang, deepLApiKey);
-            if (deepLResult) {
-                console.log('[Translation] DeepL success:', deepLResult);
-                return { text: deepLResult, source: 'DeepL' };
-            }
-            console.warn('[Translation] DeepL failed, falling back to MyMemory...');
-        } else {
-            console.warn('[Translation] DeepL API Key not found. Check .env file and restart dev server.');
+
+        if (!deepLApiKey) {
+            console.error('[Translation] DeepL API Key not found. Check .env file and restart dev server.');
+            return { text: `[번역 실패: API 키 없음] ${text}`, source: 'Error' };
         }
 
-        // MyMemory fallback
-        console.log('[Translation] Using MyMemory API for:', text);
-        const hasJapanese = /[ぁ-ゔ|ァ-ヴー|一-龯]/.test(text);
-        const hasChinese = /[\u4e00-\u9fff]/.test(text);
-        if (hasKorean) sourceLang = 'ko';
-        else if (hasJapanese) sourceLang = 'ja';
-        else if (hasChinese) sourceLang = 'zh';
-
-        if (sourceLang === targetLangCode) {
-            return { text, source: 'Dictionary' };
+        // DeepL API 사용
+        console.log('[Translation] Attempting DeepL...');
+        const deepLResult = await translateWithDeepL(text, targetLang, deepLApiKey);
+        
+        if (deepLResult) {
+            console.log('[Translation] DeepL success:', deepLResult);
+            return { text: deepLResult, source: 'DeepL' };
         }
 
-        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
-            text,
-        )}&langpair=${sourceLang}|${targetLangCode}`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-        if (data.responseStatus === 200 && data.responseData?.translatedText) {
-            console.log('[Translation] API result:', data.responseData.translatedText);
-            return { text: data.responseData.translatedText, source: 'MyMemory' };
-        }
-        console.warn('[Translation] API failed, returning fallback');
+        // DeepL 실패 시 에러 반환
+        console.error('[Translation] DeepL translation failed');
         return { text: `[번역 실패] ${text}`, source: 'Error' };
     } catch (error) {
         console.error('[Translation] Error:', error);

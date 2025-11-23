@@ -260,7 +260,7 @@ function App() {
         </button>
       </div>
 
-      <div className="absolute bottom-4 right-4 z-20">
+      <div className="absolute top-4 right-4 z-20">
         <LanguageSelector
           label="Me"
           selectedLanguage={myLanguage}

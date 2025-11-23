@@ -25,6 +25,7 @@ const parseRequestBody = (req: VercelRequest): DeepLRequestBody => {
 
 // 클라이언트에서 받은 텍스트를 DeepL API로 전달하고 결과를 그대로 반환한다.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // CORS 헤더 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -38,29 +39,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).json({ error: 'POST만 지원합니다.' });
     }
 
-    const body = parseRequestBody(req);
-    const text = body.text?.toString().trim();
-    const targetLang = body.targetLang?.toString().toUpperCase();
-    const apiKey = body.apiKey?.toString().trim();
-    const sourceLang = body.sourceLang?.toString().toUpperCase();
-
-    if (!text || !targetLang || !apiKey) {
-        return res.status(400).json({ error: 'text, targetLang, apiKey는 필수입니다.' });
-    }
-
-    const endpoint = apiKey.endsWith(':fx')
-        ? 'https://api-free.deepl.com/v2/translate'
-        : 'https://api.deepl.com/v2/translate';
-
-    const params = new URLSearchParams();
-    params.append('auth_key', apiKey);
-    params.append('text', text);
-    params.append('target_lang', targetLang);
-    if (sourceLang) {
-        params.append('source_lang', sourceLang);
-    }
-
     try {
+        const body = parseRequestBody(req);
+        const text = body.text?.toString().trim();
+        const targetLang = body.targetLang?.toString().toUpperCase();
+        // 클라이언트에서 전달받은 API 키 또는 서버 환경 변수 사용
+        const apiKey = (body.apiKey?.toString().trim() || process.env.DEEPL_API_KEY || '').trim();
+        const sourceLang = body.sourceLang?.toString().toUpperCase();
+
+        console.log('[api/deepl] Request:', {
+            hasText: !!text,
+            targetLang,
+            hasApiKey: !!apiKey,
+            apiKeyPreview: apiKey ? '***' + apiKey.slice(-4) : 'not found'
+        });
+
+        if (!text || !targetLang) {
+            return res.status(400).json({ error: 'text, targetLang은 필수입니다.' });
+        }
+
+        if (!apiKey) {
+            console.error('[api/deepl] API key missing');
+            return res.status(400).json({ 
+                error: 'DeepL API 키가 필요합니다. 클라이언트에서 전달하거나 Vercel 환경 변수 DEEPL_API_KEY를 설정하세요.' 
+            });
+        }
+
+        const endpoint = apiKey.endsWith(':fx')
+            ? 'https://api-free.deepl.com/v2/translate'
+            : 'https://api.deepl.com/v2/translate';
+
+        const params = new URLSearchParams();
+        params.append('auth_key', apiKey);
+        params.append('text', text);
+        params.append('target_lang', targetLang);
+        if (sourceLang) {
+            params.append('source_lang', sourceLang);
+        }
+
+        console.log('[api/deepl] Calling DeepL:', endpoint);
+
         const deeplResponse = await fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -81,76 +99,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         try {
             const parsed = JSON.parse(payload);
+            console.log('[api/deepl] Success');
             return res.status(200).json(parsed);
         } catch (parseError) {
-            console.error('[api/deepl] DeepL JSON parse error:', parseError);
-            return res.status(502).json({ error: 'DeepL 응답 파싱 실패', details: payload });
+            console.error('[api/deepl] DeepL JSON parse error:', parseError, 'Payload:', payload);
+            return res.status(502).json({ 
+                error: 'DeepL 응답 파싱 실패', 
+                details: payload.substring(0, 200) // 처음 200자만 반환
+            });
         }
     } catch (error) {
         console.error('[api/deepl] Unexpected error:', error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        console.error('[api/deepl] Error stack:', errorStack);
         return res.status(500).json({
             error: '서버 오류',
-            details: error instanceof Error ? error.message : String(error),
+            details: errorMessage,
         });
     }
 }
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-// 클라이언트 요청을 받아 DeepL API로 중계하는 Vercel 서버리스 함수
-
-const handler = async (req: VercelRequest, res: VercelResponse) => {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  try {
-    const { text, targetLang, apiKey } = req.body || {};
-
-    if (!text || typeof text !== 'string') {
-      return res.status(400).json({ error: 'text 필드가 필요합니다.' });
-    }
-
-    if (!targetLang || typeof targetLang !== 'string') {
-      return res.status(400).json({ error: 'targetLang 필드가 필요합니다.' });
-    }
-
-    const authKey = typeof apiKey === 'string' && apiKey.trim().length > 0
-      ? apiKey.trim()
-      : process.env.DEEPL_API_KEY;
-
-    if (!authKey) {
-      return res.status(400).json({ error: 'DeepL API 키가 설정되어 있지 않습니다.' });
-    }
-
-    const isFree = authKey.endsWith(':fx');
-    const endpoint = isFree
-      ? 'https://api-free.deepl.com/v2/translate'
-      : 'https://api.deepl.com/v2/translate';
-
-    const params = new URLSearchParams();
-    params.append('auth_key', authKey);
-    params.append('text', text);
-    params.append('target_lang', targetLang);
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('[api/deepl] DeepL response error:', data);
-      return res.status(response.status).json({ error: data });
-    }
-
-    return res.status(200).json(data);
-  } catch (error) {
-    console.error('[api/deepl] Unexpected error:', error);
-    return res.status(500).json({ error: 'DeepL 프록시 호출 중 오류가 발생했습니다.' });
-  }
-};
-
-export default handler;
-

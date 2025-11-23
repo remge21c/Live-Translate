@@ -9,6 +9,11 @@ import type { Message, LanguageCode } from './types';
 
 import { translate } from './utils/translation';
 
+const getInitialLayoutMode = (): 'portrait' | 'landscape' => {
+  if (typeof window === 'undefined') return 'portrait';
+  return window.matchMedia('(orientation: portrait)').matches ? 'portrait' : 'landscape';
+};
+
 const SILENCE_TIMEOUT_MS = 1800;
 const NOTICE_DURATION_MS = 2000;
 
@@ -16,6 +21,8 @@ function App() {
   const [myLanguage, setMyLanguage] = useState<LanguageCode>('ko-KR');
   const [partnerLanguage, setPartnerLanguage] = useState<LanguageCode>('en-US');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [layoutMode, setLayoutMode] = useState<'portrait' | 'landscape'>(getInitialLayoutMode);
+  const [isSwapped, setIsSwapped] = useState(false);
 
   // Track which mic is active: 'me', 'partner', or null
   const [activeMic, setActiveMic] = useState<'me' | 'partner' | null>(null);
@@ -26,6 +33,30 @@ function App() {
 
   const { volume } = useAudio(isListening);
   const { transcript, resetTranscript } = useSpeechRecognition(isListening, currentLanguage);
+  const isLandscape = layoutMode === 'landscape';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(orientation: portrait)');
+    const updateMode = () => {
+      setLayoutMode(mediaQuery.matches ? 'portrait' : 'landscape');
+    };
+    updateMode();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateMode);
+      return () => mediaQuery.removeEventListener('change', updateMode);
+    }
+
+    mediaQuery.addListener(updateMode);
+    return () => mediaQuery.removeListener(updateMode);
+  }, []);
+
+  useEffect(() => {
+    if (layoutMode === 'portrait' && isSwapped) {
+      setIsSwapped(false);
+    }
+  }, [layoutMode, isSwapped]);
 
   // Track last processed transcript to avoid duplicates
   const lastProcessedRef = useRef<string>('');
@@ -152,6 +183,91 @@ function App() {
     };
   }, [clearSilenceTimer]);
 
+  const renderPartnerSection = (variant: 'portrait' | 'landscape') => (
+    <div
+      className={`flex-1 flex flex-col min-w-0 transition-colors duration-300 relative overflow-hidden ${
+        variant === 'portrait'
+          ? 'bg-slate-800 rotate-180 border-b-2 border-cyan-400'
+          : 'bg-slate-800/90 rounded-3xl border border-slate-700/60'
+      }`}
+    >
+      <div className="absolute top-4 left-4 z-20">
+        <LanguageSelector
+          label="Partner"
+          selectedLanguage={partnerLanguage}
+          onSelectLanguage={setPartnerLanguage}
+        />
+      </div>
+
+      <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-10 pb-12' : 'pt-10 pb-10'}`}>
+        <div className="h-full bg-slate-700/40 rounded-2xl border border-slate-600/50 overflow-y-auto shadow-inner backdrop-blur-sm">
+          <ChatHistory messages={messages} viewer="partner" />
+        </div>
+      </div>
+
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30">
+        <button
+          onClick={() => {
+            if (activeMic === 'partner') {
+              setActiveMic(null);
+            } else {
+              setActiveMic('partner');
+            }
+          }}
+          className={`p-4 rounded-full shadow-2xl transition-all duration-300 border-4 border-slate-700 ${
+            activeMic === 'partner'
+              ? 'bg-red-500 animate-pulse scale-110 border-red-400'
+              : 'bg-slate-600 hover:bg-slate-500'
+          }`}
+        >
+          {activeMic === 'partner' ? <Mic size={28} color="white" /> : <MicOff size={28} color="white" />}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderMeSection = (variant: 'portrait' | 'landscape') => (
+    <div
+      className={`flex-1 flex flex-col min-w-0 transition-colors duration-300 relative overflow-hidden ${
+        variant === 'portrait' ? 'bg-slate-900' : 'bg-slate-900/90 rounded-3xl border border-slate-800/60'
+      }`}
+    >
+      <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-12 pb-12' : 'pt-10 pb-10'}`}>
+        <div className="h-full bg-slate-800/60 rounded-2xl border border-slate-700 overflow-y-auto shadow-inner backdrop-blur-sm">
+          <ChatHistory messages={messages} viewer="me" />
+        </div>
+      </div>
+
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30">
+        <button
+          onClick={() => {
+            if (activeMic === 'me') {
+              setActiveMic(null);
+            } else {
+              setActiveMic('me');
+            }
+          }}
+          className={`p-4 rounded-full shadow-2xl transition-all duration-300 border-4 border-slate-800 ${
+            activeMic === 'me'
+              ? 'bg-red-500 animate-pulse scale-110 border-red-400'
+              : 'bg-cyan-600 hover:bg-cyan-500'
+          }`}
+        >
+          {activeMic === 'me' ? <Mic size={28} color="white" /> : <MicOff size={28} color="white" />}
+        </button>
+      </div>
+
+      <div className="absolute bottom-4 right-4 z-20">
+        <LanguageSelector
+          label="Me"
+          selectedLanguage={myLanguage}
+          onSelectLanguage={setMyLanguage}
+          isInverted
+        />
+      </div>
+    </div>
+  );
+
   // Effect to simulate adding message when transcript updates (debounce or wait for pause would be better)
   // For this demo, let's just show the transcript in the "Live" box and not auto-add to history to avoid spam.
   // We will add a "Send" button or just rely on the "Live" view for now, 
@@ -164,100 +280,27 @@ function App() {
 
   return (
     <div className="h-[95vh] w-screen bg-slate-900 text-white overflow-hidden flex justify-center items-center">
-      {/* Main Container - Responsive with max width */}
-      <div className="h-full w-full max-w-[480px] sm:max-w-[640px] md:max-w-[768px] lg:max-w-[1024px] bg-slate-900 flex flex-col relative overflow-hidden">
-
-        {/* DEBUG OVERLAY - 주석 처리됨 (화면에 표시되지 않음) */}
-        {/* 
-        <div className="absolute top-0 left-0 z-50 p-2 bg-black/50 text-[10px] pointer-events-none">
-          <p>Status: {activeMic ? `Listening (${activeMic} - ${currentLanguage})` : 'Idle'}</p>
-          <p>Vol: {volume.toFixed(1)}</p>
-          <p>DeepL: Serverless</p>
-        </div>
-        */}
-
-        {/* --- Top Half (Partner) --- */}
-        <div className="flex-1 flex flex-col bg-slate-800 rotate-180 border-b-2 border-cyan-400 transition-colors duration-300 relative overflow-hidden">
-          {/* Partner Controls (Top Left relative to screen, Bottom Right relative to Partner) */}
-          <div className="absolute top-4 left-4 z-20">
-            <LanguageSelector
-              label="Partner"
-              selectedLanguage={partnerLanguage}
-              onSelectLanguage={setPartnerLanguage}
-            />
-          </div>
-
-          {/* Partner Chat History - Scrollable */}
-          <div className="flex-1 overflow-hidden px-4 pt-10 pb-12">
-            <div className="h-full bg-slate-700/40 rounded-2xl border border-slate-600/50 overflow-y-auto shadow-inner backdrop-blur-sm">
-              <ChatHistory messages={messages} viewer="partner" />
-            </div>
-          </div>
-
-          {/* Partner Mic Button (Fixed at Bottom) */}
-          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30">
-            <button
-              onClick={() => {
-                if (activeMic === 'partner') {
-                  setActiveMic(null);
-                } else {
-                  setActiveMic('partner');
-                }
-              }}
-              className={`p-4 rounded-full shadow-2xl transition-all duration-300 border-4 border-slate-700 ${activeMic === 'partner'
-                ? 'bg-red-500 animate-pulse scale-110 border-red-400'
-                : 'bg-slate-600 hover:bg-slate-500'
-                }`}
-            >
-              {activeMic === 'partner' ? <Mic size={28} color="white" /> : <MicOff size={28} color="white" />}
-            </button>
-          </div>
-
-
-        </div>
-
-
-        {/* --- Bottom Half (Me) --- */}
-        <div className="flex-1 flex flex-col bg-slate-900 transition-colors duration-300 relative overflow-hidden">
-
-
-
-          {/* My Chat History - Scrollable */}
-          <div className="flex-1 overflow-hidden px-4 pt-12 pb-12">
-            <div className="h-full bg-slate-800/60 rounded-2xl border border-slate-700 overflow-y-auto shadow-inner backdrop-blur-sm">
-              <ChatHistory messages={messages} viewer="me" />
-            </div>
-          </div>
-
-          {/* My Mic Button (Fixed at Bottom) */}
-          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30">
-            <button
-              onClick={() => {
-                if (activeMic === 'me') {
-                  setActiveMic(null);
-                } else {
-                  setActiveMic('me');
-                }
-              }}
-              className={`p-4 rounded-full shadow-2xl transition-all duration-300 border-4 border-slate-800 ${activeMic === 'me'
-                ? 'bg-red-500 animate-pulse scale-110 border-red-400'
-                : 'bg-cyan-600 hover:bg-cyan-500'
-                }`}
-            >
-              {activeMic === 'me' ? <Mic size={28} color="white" /> : <MicOff size={28} color="white" />}
-            </button>
-          </div>
-
-          {/* My Controls */}
-          <div className="absolute bottom-4 right-4 z-20">
-            <LanguageSelector
-              label="Me"
-              selectedLanguage={myLanguage}
-              onSelectLanguage={setMyLanguage}
-              isInverted
-            />
-          </div>
-        </div>
+      <div
+        className={`h-full w-full max-w-[480px] sm:max-w-[640px] md:max-w-[768px] lg:max-w-[1024px] bg-slate-900 flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} relative overflow-hidden`}
+      >
+        {isLandscape ? (
+          isSwapped ? (
+            <>
+              {renderMeSection('landscape')}
+              {renderPartnerSection('landscape')}
+            </>
+          ) : (
+            <>
+              {renderPartnerSection('landscape')}
+              {renderMeSection('landscape')}
+            </>
+          )
+        ) : (
+          <>
+            {renderPartnerSection('portrait')}
+            {renderMeSection('portrait')}
+          </>
+        )}
 
         {systemNotice && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
@@ -267,13 +310,25 @@ function App() {
           </div>
         )}
 
-        {/* Centered Visualizer - Between both chat areas */}
+        {isLandscape && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-1">
+            <button
+              onClick={() => setIsSwapped(prev => !prev)}
+              className="px-4 py-2 rounded-full bg-slate-800/80 border border-cyan-400 text-xs font-semibold uppercase tracking-wide hover:bg-slate-700 transition-colors"
+            >
+              {isSwapped ? '기본 배치로' : '좌우 반전'}
+            </button>
+            <p className="text-[10px] text-slate-300">가로 모드 전용</p>
+          </div>
+        )}
+
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-8 flex justify-center items-center pointer-events-none z-30">
           <AudioVisualizer isListening={isListening} volume={volume} />
         </div>
       </div>
     </div>
   );
+
 }
 
 export default App;

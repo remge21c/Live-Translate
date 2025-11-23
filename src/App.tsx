@@ -22,7 +22,11 @@ function App() {
   const [partnerLanguage, setPartnerLanguage] = useState<LanguageCode>('en-US');
   const [messages, setMessages] = useState<Message[]>([]);
   const [layoutMode, setLayoutMode] = useState<'portrait' | 'landscape'>(getInitialLayoutMode);
-  const [isSwapped, setIsSwapped] = useState(false);
+  const [landscapeLayout, setLandscapeLayout] = useState<'partner-left' | 'me-left'>(() => {
+    if (typeof window === 'undefined') return 'partner-left';
+    const stored = window.localStorage.getItem('landscapeLayout');
+    return stored === 'me-left' ? 'me-left' : 'partner-left';
+  });
 
   // Track which mic is active: 'me', 'partner', or null
   const [activeMic, setActiveMic] = useState<'me' | 'partner' | null>(null);
@@ -56,10 +60,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (layoutMode === 'portrait' && isSwapped) {
-      setIsSwapped(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('landscapeLayout', landscapeLayout);
     }
-  }, [layoutMode, isSwapped]);
+  }, [landscapeLayout]);
 
   // Track last processed transcript to avoid duplicates
   const lastProcessedRef = useRef<string>('');
@@ -295,15 +299,15 @@ function App() {
         className={`h-full w-full ${containerWidthClasses} bg-slate-900 flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} relative overflow-hidden`}
       >
         {isLandscape ? (
-          isSwapped ? (
+          landscapeLayout === 'partner-left' ? (
             <>
-              {renderMeSection('landscape')}
               {renderPartnerSection('landscape')}
+              {renderMeSection('landscape')}
             </>
           ) : (
             <>
-              {renderPartnerSection('landscape')}
               {renderMeSection('landscape')}
+              {renderPartnerSection('landscape')}
             </>
           )
         ) : (
@@ -324,12 +328,16 @@ function App() {
         {isLandscape && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-1">
             <button
-              onClick={() => setIsSwapped(prev => !prev)}
-              className="px-4 py-2 rounded-full bg-slate-800/80 border border-cyan-400 text-xs font-semibold uppercase tracking-wide hover:bg-slate-700 transition-colors"
+              onClick={() =>
+                setLandscapeLayout(prev => (prev === 'partner-left' ? 'me-left' : 'partner-left'))
+              }
+              className="px-4 py-2 rounded-full bg-slate-800/80 border border-cyan-400 text-xs font-semibold tracking-wide hover:bg-slate-700 transition-colors"
             >
-              {isSwapped ? '기본 배치로' : '좌우 반전'}
+              기본 위치 교체
             </button>
-            <p className="text-[10px] text-slate-300">가로 모드 전용</p>
+            <p className="text-[10px] text-slate-300">
+              현재 왼쪽: {landscapeLayout === 'partner-left' ? '파트너' : '나'}
+            </p>
           </div>
         )}
 

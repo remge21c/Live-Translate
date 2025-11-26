@@ -6,9 +6,10 @@ interface ChatHistoryProps {
     messages: Message[];
     viewer: 'me' | 'partner'; // Who is looking at this history?
     onDeleteMessage?: (id: string) => void; // 메시지 삭제 콜백
+    isDark?: boolean; // 다크모드 여부
 }
 
-export const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, viewer, onDeleteMessage }) => {
+export const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, viewer, onDeleteMessage, isDark = true }) => {
     const bottomRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -23,6 +24,7 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, viewer, onDe
                     message={msg} 
                     isMe={msg.sender === viewer} 
                     onDelete={onDeleteMessage}
+                    isDark={isDark}
                 />
             ))}
             <div ref={bottomRef} />

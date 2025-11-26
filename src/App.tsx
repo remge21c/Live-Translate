@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, Sun, Moon } from 'lucide-react';
 import { useAudio } from './hooks/useAudio';
 import { AudioVisualizer } from './components/AudioVisualizer';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
@@ -14,6 +14,12 @@ const getInitialLayoutMode = (): 'portrait' | 'landscape' => {
   return window.matchMedia('(orientation: portrait)').matches ? 'portrait' : 'landscape';
 };
 
+const getInitialTheme = (): 'dark' | 'light' => {
+  if (typeof window === 'undefined') return 'dark';
+  const stored = window.localStorage.getItem('theme');
+  return stored === 'light' ? 'light' : 'dark';
+};
+
 const SILENCE_TIMEOUT_MS = 1800;
 const NOTICE_DURATION_MS = 2000;
 
@@ -22,11 +28,14 @@ function App() {
   const [partnerLanguage, setPartnerLanguage] = useState<LanguageCode>('en-US');
   const [messages, setMessages] = useState<Message[]>([]);
   const [layoutMode, setLayoutMode] = useState<'portrait' | 'landscape'>(getInitialLayoutMode);
+  const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme);
   const [landscapeLayout, setLandscapeLayout] = useState<'partner-left' | 'me-left'>(() => {
     if (typeof window === 'undefined') return 'partner-left';
     const stored = window.localStorage.getItem('landscapeLayout');
     return stored === 'me-left' ? 'me-left' : 'partner-left';
   });
+  
+  const isDark = theme === 'dark';
 
   // Track which mic is active: 'me', 'partner', or null
   const [activeMic, setActiveMic] = useState<'me' | 'partner' | null>(null);
@@ -64,6 +73,16 @@ function App() {
       window.localStorage.setItem('landscapeLayout', landscapeLayout);
     }
   }, [landscapeLayout]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('theme', theme);
+    }
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  }, []);
 
   // Track last processed transcript to avoid duplicates
   const lastProcessedRef = useRef<string>('');
@@ -213,8 +232,12 @@ function App() {
     <div
       className={`flex-1 flex flex-col min-w-0 transition-colors duration-300 relative overflow-hidden ${
         variant === 'portrait'
-          ? 'bg-slate-800 rotate-180 border-b-2 border-cyan-400'
-          : 'bg-slate-800/90 rounded-3xl border border-slate-700/60'
+          ? isDark 
+            ? 'bg-slate-800 rotate-180 border-b-2 border-cyan-400'
+            : 'bg-gray-100 rotate-180 border-b-2 border-blue-400'
+          : isDark
+            ? 'bg-slate-800/90 rounded-3xl border border-slate-700/60'
+            : 'bg-gray-100/90 rounded-3xl border border-gray-300/60'
       }`}
     >
       <div className="absolute top-4 left-4 z-20">
@@ -222,12 +245,17 @@ function App() {
           label="Partner"
           selectedLanguage={partnerLanguage}
           onSelectLanguage={setPartnerLanguage}
+          isDark={isDark}
         />
       </div>
 
       <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-10 pb-12' : 'pt-10 pb-10'}`}>
-        <div className="h-full bg-slate-700/40 rounded-2xl border border-slate-600/50 overflow-y-auto shadow-inner backdrop-blur-sm">
-          <ChatHistory messages={messages} viewer="partner" onDeleteMessage={handleDeleteMessage} />
+        <div className={`h-full rounded-2xl border overflow-y-auto shadow-inner backdrop-blur-sm ${
+          isDark 
+            ? 'bg-slate-700/40 border-slate-600/50' 
+            : 'bg-white/60 border-gray-200'
+        }`}>
+          <ChatHistory messages={messages} viewer="partner" onDeleteMessage={handleDeleteMessage} isDark={isDark} />
         </div>
       </div>
 
@@ -240,10 +268,12 @@ function App() {
               setActiveMic('partner');
             }
           }}
-          className={`p-4 rounded-full shadow-2xl transition-all duration-300 border-4 border-slate-700 ${
+          className={`p-4 rounded-full shadow-2xl transition-all duration-300 border-4 ${
             activeMic === 'partner'
               ? 'bg-red-500 animate-pulse scale-110 border-red-400'
-              : 'bg-slate-600 hover:bg-slate-500'
+              : isDark 
+                ? 'bg-slate-600 hover:bg-slate-500 border-slate-700'
+                : 'bg-gray-400 hover:bg-gray-500 border-gray-300'
           }`}
         >
           {activeMic === 'partner' ? <Mic size={28} color="white" /> : <MicOff size={28} color="white" />}
@@ -255,12 +285,20 @@ function App() {
   const renderMeSection = (variant: 'portrait' | 'landscape') => (
     <div
       className={`flex-1 flex flex-col min-w-0 transition-colors duration-300 relative overflow-hidden ${
-        variant === 'portrait' ? 'bg-slate-900' : 'bg-slate-900/90 rounded-3xl border border-slate-800/60'
+        variant === 'portrait' 
+          ? isDark ? 'bg-slate-900' : 'bg-white'
+          : isDark 
+            ? 'bg-slate-900/90 rounded-3xl border border-slate-800/60'
+            : 'bg-white/90 rounded-3xl border border-gray-200/60'
       }`}
     >
       <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-12 pb-12' : 'pt-10 pb-10'}`}>
-        <div className="h-full bg-slate-800/60 rounded-2xl border border-slate-700 overflow-y-auto shadow-inner backdrop-blur-sm">
-          <ChatHistory messages={messages} viewer="me" onDeleteMessage={handleDeleteMessage} />
+        <div className={`h-full rounded-2xl border overflow-y-auto shadow-inner backdrop-blur-sm ${
+          isDark 
+            ? 'bg-slate-800/60 border-slate-700' 
+            : 'bg-gray-50/80 border-gray-200'
+        }`}>
+          <ChatHistory messages={messages} viewer="me" onDeleteMessage={handleDeleteMessage} isDark={isDark} />
         </div>
       </div>
 
@@ -273,10 +311,12 @@ function App() {
               setActiveMic('me');
             }
           }}
-          className={`p-4 rounded-full shadow-2xl transition-all duration-300 border-4 border-slate-800 ${
+          className={`p-4 rounded-full shadow-2xl transition-all duration-300 border-4 ${
             activeMic === 'me'
               ? 'bg-red-500 animate-pulse scale-110 border-red-400'
-              : 'bg-cyan-600 hover:bg-cyan-500'
+              : isDark 
+                ? 'bg-cyan-600 hover:bg-cyan-500 border-slate-800'
+                : 'bg-blue-500 hover:bg-blue-600 border-gray-200'
           }`}
         >
           {activeMic === 'me' ? <Mic size={28} color="white" /> : <MicOff size={28} color="white" />}
@@ -289,6 +329,7 @@ function App() {
           selectedLanguage={myLanguage}
           onSelectLanguage={setMyLanguage}
           isInverted
+          isDark={isDark}
         />
       </div>
     </div>
@@ -305,10 +346,27 @@ function App() {
   // For now, let's keep the UI structure ready.
 
   return (
-    <div className="h-[95vh] w-screen bg-slate-900 text-white overflow-hidden flex justify-center items-center">
+    <div className={`h-[95vh] w-screen overflow-hidden flex justify-center items-center transition-colors duration-300 ${
+      isDark ? 'bg-slate-900 text-white' : 'bg-gray-50 text-gray-900'
+    }`}>
       <div
-        className={`h-full w-full ${containerWidthClasses} bg-slate-900 flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} relative overflow-hidden`}
+        className={`h-full w-full ${containerWidthClasses} flex ${isLandscape ? 'flex-row gap-4' : 'flex-col'} relative overflow-hidden transition-colors duration-300 ${
+          isDark ? 'bg-slate-900' : 'bg-gray-50'
+        }`}
       >
+        {/* 테마 전환 버튼 */}
+        <button
+          onClick={toggleTheme}
+          className={`absolute top-4 left-1/2 -translate-x-1/2 z-50 p-2 rounded-full shadow-lg transition-all duration-300 ${
+            isDark 
+              ? 'bg-slate-700 hover:bg-slate-600 text-yellow-400' 
+              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+          }`}
+          title={isDark ? '라이트 모드' : '다크 모드'}
+        >
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+
         {isLandscape ? (
           landscapeLayout === 'partner-left' ? (
             <>
@@ -329,8 +387,10 @@ function App() {
         )}
 
         {systemNotice && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
-            <div className="rounded-full bg-black/70 px-4 py-1 text-xs font-medium text-white shadow-lg">
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40">
+            <div className={`rounded-full px-4 py-1 text-xs font-medium shadow-lg ${
+              isDark ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-800 border border-gray-200'
+            }`}>
               {systemNotice}
             </div>
           </div>
@@ -342,11 +402,15 @@ function App() {
               onClick={() =>
                 setLandscapeLayout(prev => (prev === 'partner-left' ? 'me-left' : 'partner-left'))
               }
-              className="px-4 py-2 rounded-full bg-slate-800/80 border border-cyan-400 text-xs font-semibold tracking-wide hover:bg-slate-700 transition-colors"
+              className={`px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition-colors ${
+                isDark 
+                  ? 'bg-slate-800/80 border border-cyan-400 hover:bg-slate-700' 
+                  : 'bg-white/80 border border-blue-400 hover:bg-gray-100 text-gray-700'
+              }`}
             >
               기본 위치 교체
             </button>
-            <p className="text-[10px] text-slate-300">
+            <p className={`text-[10px] ${isDark ? 'text-slate-300' : 'text-gray-500'}`}>
               현재 왼쪽: {landscapeLayout === 'partner-left' ? '파트너' : '나'}
             </p>
           </div>

@@ -137,8 +137,13 @@ function App() {
 
     lastProcessedRef.current = text;
     lastProcessedAtRef.current = now;
-    await addMockMessage(text, sender);
+    
+    // 번역 전에 먼저 transcript 초기화 (새 음성 인식 준비)
+    // 번역 API 호출 중에도 새로운 음성을 놓치지 않도록 함
     resetTranscript();
+    
+    // 번역은 비동기로 진행 (새 음성 인식과 병렬 처리)
+    await addMockMessage(text, sender);
 
     if (reason === 'silence') {
       showNotice('자동 정지 감지: 번역을 전송했습니다');

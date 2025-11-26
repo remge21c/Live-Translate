@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 모바일 브라우저 주소창/툴바를 고려한 전체 높이 */
+html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* dvh (dynamic viewport height) 지원 브라우저용 */
+@supports (height: 100dvh) {
+    html, body, #root {
+        height: 100dvh;
+    }
+}
+
+/* svh (small viewport height) 폴백 - 주소창이 보일 때 기준 */
+@supports (height: 100svh) {
+    html, body, #root {
+        min-height: 100svh;
+    }
+}
+
 @layer utilities {
 
     /* Custom Scrollbar Styling - Natural Dark Theme */

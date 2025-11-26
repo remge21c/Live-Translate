@@ -346,7 +346,7 @@ function App() {
   // For now, let's keep the UI structure ready.
 
   return (
-    <div className={`h-[95vh] w-screen overflow-hidden flex justify-center items-center transition-colors duration-300 ${
+    <div className={`h-full w-full overflow-hidden flex justify-center items-center transition-colors duration-300 ${
       isDark ? 'bg-slate-900 text-white' : 'bg-gray-50 text-gray-900'
     }`}>
       <div
@@ -354,10 +354,14 @@ function App() {
           isDark ? 'bg-slate-900' : 'bg-gray-50'
         }`}
       >
-        {/* 테마 전환 버튼 */}
+        {/* 테마 전환 버튼 - 세로모드: 중앙 왼쪽, 가로모드: 상단 중앙 */}
         <button
           onClick={toggleTheme}
-          className={`absolute top-4 left-1/2 -translate-x-1/2 z-50 p-2 rounded-full shadow-lg transition-all duration-300 ${
+          className={`absolute z-50 p-2 rounded-full shadow-lg transition-all duration-300 ${
+            isLandscape 
+              ? 'top-4 left-1/2 -translate-x-1/2' 
+              : 'top-1/2 left-4 -translate-y-1/2'
+          } ${
             isDark 
               ? 'bg-slate-700 hover:bg-slate-600 text-yellow-400' 
               : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'

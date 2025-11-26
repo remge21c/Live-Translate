@@ -1,12 +1,14 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import type { Message } from '../types';
 
 interface ChatBubbleProps {
     message: Message;
     isMe: boolean; // "Me" relative to the viewer of this specific bubble list
+    onDelete?: (id: string) => void; // 삭제 콜백 함수
 }
 
-export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe }) => {
+export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, onDelete }) => {
     // Logic:
     // Align Right if I sent it (isMe).
     // Align Left if Partner sent it (!isMe).
@@ -19,8 +21,25 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe }) => {
     const primaryText = isMe ? message.text : message.translatedText;
     const secondaryText = isMe ? message.translatedText : message.text;
 
+    const handleDelete = () => {
+        if (onDelete) {
+            onDelete(message.id);
+        }
+    };
+
     return (
         <div className={`flex w-full mb-4 ${isMe ? 'justify-end' : 'justify-start'}`}>
+            {/* 삭제 버튼 - 내 메시지일 때 왼쪽에 표시 */}
+            {isMe && onDelete && (
+                <button
+                    onClick={handleDelete}
+                    className="self-center mr-2 p-1.5 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-red-300 transition-colors opacity-60 hover:opacity-100"
+                    title="메시지 삭제"
+                >
+                    <X size={14} />
+                </button>
+            )}
+            
             <div
                 className={`
                     max-w-[80%] rounded-2xl p-4 shadow-md flex flex-col
@@ -50,6 +69,17 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe }) => {
                     </div>
                 )}
             </div>
+
+            {/* 삭제 버튼 - 상대방 메시지일 때 오른쪽에 표시 */}
+            {!isMe && onDelete && (
+                <button
+                    onClick={handleDelete}
+                    className="self-center ml-2 p-1.5 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-red-300 transition-colors opacity-60 hover:opacity-100"
+                    title="메시지 삭제"
+                >
+                    <X size={14} />
+                </button>
+            )}
         </div>
     );
 };

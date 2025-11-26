@@ -96,6 +96,12 @@ function App() {
     }
   }, []);
 
+  // 메시지 삭제 함수 - 양쪽 화면에서 동시에 삭제됨
+  const handleDeleteMessage = useCallback((id: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== id));
+    console.log('[handleDeleteMessage] Deleted message:', id);
+  }, []);
+
   const addMockMessage = useCallback(async (text: string, sender: 'me' | 'partner') => {
     const sourceLang = sender === 'me' ? myLanguage : partnerLanguage;
     const targetLang = sender === 'me' ? partnerLanguage : myLanguage;
@@ -221,7 +227,7 @@ function App() {
 
       <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-10 pb-12' : 'pt-10 pb-10'}`}>
         <div className="h-full bg-slate-700/40 rounded-2xl border border-slate-600/50 overflow-y-auto shadow-inner backdrop-blur-sm">
-          <ChatHistory messages={messages} viewer="partner" />
+          <ChatHistory messages={messages} viewer="partner" onDeleteMessage={handleDeleteMessage} />
         </div>
       </div>
 
@@ -254,7 +260,7 @@ function App() {
     >
       <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-12 pb-12' : 'pt-10 pb-10'}`}>
         <div className="h-full bg-slate-800/60 rounded-2xl border border-slate-700 overflow-y-auto shadow-inner backdrop-blur-sm">
-          <ChatHistory messages={messages} viewer="me" />
+          <ChatHistory messages={messages} viewer="me" onDeleteMessage={handleDeleteMessage} />
         </div>
       </div>
 

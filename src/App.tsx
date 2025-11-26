@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Sun, Moon } from 'lucide-react';
+import { Mic, MicOff, Sun, Moon, RotateCcw } from 'lucide-react';
 import { useAudio } from './hooks/useAudio';
 import { AudioVisualizer } from './components/AudioVisualizer';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
@@ -119,6 +119,12 @@ function App() {
   const handleDeleteMessage = useCallback((id: string) => {
     setMessages(prev => prev.filter(msg => msg.id !== id));
     console.log('[handleDeleteMessage] Deleted message:', id);
+  }, []);
+
+  // 전체 메시지 초기화 함수
+  const handleClearAllMessages = useCallback(() => {
+    setMessages([]);
+    console.log('[handleClearAllMessages] All messages cleared');
   }, []);
 
   const addMockMessage = useCallback(async (text: string, sender: 'me' | 'partner') => {
@@ -354,22 +360,35 @@ function App() {
           isDark ? 'bg-slate-900' : 'bg-gray-50'
         }`}
       >
-        {/* 테마 전환 버튼 - 세로모드: 중앙 왼쪽, 가로모드: 상단 중앙 */}
-        <button
-          onClick={toggleTheme}
-          className={`absolute z-50 p-2 rounded-full shadow-lg transition-all duration-300 ${
-            isLandscape 
-              ? 'top-4 left-1/2 -translate-x-1/2' 
-              : 'top-1/2 left-4 -translate-y-1/2'
-          } ${
-            isDark 
-              ? 'bg-slate-700 hover:bg-slate-600 text-yellow-400' 
-              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
-          }`}
-          title={isDark ? '라이트 모드' : '다크 모드'}
-        >
-          {isDark ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
+        {/* 테마 전환 버튼 + 초기화 버튼 - 세로모드: 중앙 왼쪽, 가로모드: 상단 중앙 */}
+        <div className={`absolute z-50 flex gap-2 ${
+          isLandscape 
+            ? 'top-4 left-1/2 -translate-x-1/2 flex-row' 
+            : 'top-1/2 left-4 -translate-y-1/2 flex-col'
+        }`}>
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-full shadow-lg transition-all duration-300 ${
+              isDark 
+                ? 'bg-slate-700 hover:bg-slate-600 text-yellow-400' 
+                : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+            }`}
+            title={isDark ? '라이트 모드' : '다크 모드'}
+          >
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button
+            onClick={handleClearAllMessages}
+            className={`p-2 rounded-full shadow-lg transition-all duration-300 ${
+              isDark 
+                ? 'bg-slate-700 hover:bg-slate-600 text-gray-300 hover:text-white' 
+                : 'bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-700 border border-gray-200'
+            }`}
+            title="전체 초기화"
+          >
+            <RotateCcw size={18} />
+          </button>
+        </div>
 
         {isLandscape ? (
           landscapeLayout === 'partner-left' ? (

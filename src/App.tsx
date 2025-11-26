@@ -246,14 +246,17 @@ function App() {
             : 'bg-gray-100/90 rounded-3xl border border-gray-300/60'
       }`}
     >
-      <div className="absolute top-4 left-4 z-20">
-        <LanguageSelector
-          label="Partner"
-          selectedLanguage={partnerLanguage}
-          onSelectLanguage={setPartnerLanguage}
-          isDark={isDark}
-        />
-      </div>
+      {/* 세로모드에서만 언어 선택기 표시 (가로모드는 외부에서 고정 위치로 표시) */}
+      {variant === 'portrait' && (
+        <div className="absolute top-4 left-4 z-20">
+          <LanguageSelector
+            label="Partner"
+            selectedLanguage={partnerLanguage}
+            onSelectLanguage={setPartnerLanguage}
+            isDark={isDark}
+          />
+        </div>
+      )}
 
       <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-10 pb-12' : 'pt-10 pb-10'}`}>
         <div className={`h-full rounded-2xl border overflow-y-auto shadow-inner backdrop-blur-sm ${
@@ -329,15 +332,18 @@ function App() {
         </button>
       </div>
 
-      <div className="absolute top-4 right-4 z-20">
-        <LanguageSelector
-          label="Me"
-          selectedLanguage={myLanguage}
-          onSelectLanguage={setMyLanguage}
-          isInverted
-          isDark={isDark}
-        />
-      </div>
+      {/* 세로모드에서만 언어 선택기 표시 (가로모드는 외부에서 고정 위치로 표시) */}
+      {variant === 'portrait' && (
+        <div className="absolute top-4 right-4 z-20">
+          <LanguageSelector
+            label="Me"
+            selectedLanguage={myLanguage}
+            onSelectLanguage={setMyLanguage}
+            isInverted
+            isDark={isDark}
+          />
+        </div>
+      )}
     </div>
   );
 
@@ -389,6 +395,29 @@ function App() {
             <RotateCcw size={18} />
           </button>
         </div>
+
+        {/* 가로모드 언어 선택기 - 항상 고정 위치 (왼쪽: Partner, 오른쪽: Me) */}
+        {isLandscape && (
+          <>
+            <div className="absolute top-4 left-4 z-50">
+              <LanguageSelector
+                label="Partner"
+                selectedLanguage={partnerLanguage}
+                onSelectLanguage={setPartnerLanguage}
+                isDark={isDark}
+              />
+            </div>
+            <div className="absolute top-4 right-4 z-50">
+              <LanguageSelector
+                label="Me"
+                selectedLanguage={myLanguage}
+                onSelectLanguage={setMyLanguage}
+                isInverted
+                isDark={isDark}
+              />
+            </div>
+          </>
+        )}
 
         {isLandscape ? (
           landscapeLayout === 'partner-left' ? (

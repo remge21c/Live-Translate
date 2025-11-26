@@ -396,10 +396,10 @@ function App() {
           </button>
         </div>
 
-        {/* 가로모드 언어 선택기 - 항상 고정 위치 (왼쪽: Partner, 오른쪽: Me) */}
+        {/* 가로모드 언어 선택기 - 위치 변경에 따라 좌우 이동 */}
         {isLandscape && (
           <>
-            <div className="absolute top-4 left-4 z-50">
+            <div className={`absolute top-4 z-50 ${landscapeLayout === 'partner-left' ? 'left-4' : 'right-4'}`}>
               <LanguageSelector
                 label="Partner"
                 selectedLanguage={partnerLanguage}
@@ -407,7 +407,7 @@ function App() {
                 isDark={isDark}
               />
             </div>
-            <div className="absolute top-4 right-4 z-50">
+            <div className={`absolute top-4 z-50 ${landscapeLayout === 'partner-left' ? 'right-4' : 'left-4'}`}>
               <LanguageSelector
                 label="Me"
                 selectedLanguage={myLanguage}

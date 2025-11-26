@@ -420,7 +420,7 @@ function App() {
         )}
 
         {isLandscape && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-1">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40">
             <button
               onClick={() =>
                 setLandscapeLayout(prev => (prev === 'partner-left' ? 'me-left' : 'partner-left'))
@@ -433,9 +433,6 @@ function App() {
             >
               기본 위치 교체
             </button>
-            <p className={`text-[10px] ${isDark ? 'text-slate-300' : 'text-gray-500'}`}>
-              현재 왼쪽: {landscapeLayout === 'partner-left' ? '파트너' : '나'}
-            </p>
           </div>
         )}
 

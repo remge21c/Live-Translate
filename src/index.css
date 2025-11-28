@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 모바일 전체 높이 지원 */
+html, body, #root {
+    height: 100%;
+    height: 100dvh; /* Dynamic viewport height - 모바일 브라우저 UI 대응 */
+}
+
+@supports not (height: 100dvh) {
+    html, body, #root {
+        height: 100svh; /* Small viewport height fallback */
+    }
+}
+
 @layer utilities {
 
     /* Custom Scrollbar Styling - Natural Dark Theme */

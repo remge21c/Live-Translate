@@ -36,7 +36,7 @@ function App() {
   const isListening = activeMic !== null;
 
   const { volume } = useAudio(isListening);
-  const { transcript, resetTranscript, restartSession } = useSpeechRecognition(isListening, currentLanguage);
+  const { transcript, restartSession } = useSpeechRecognition(isListening, currentLanguage);
   const isLandscape = layoutMode === 'landscape';
   const containerWidthClasses = isLandscape
     ? 'max-w-none px-4'

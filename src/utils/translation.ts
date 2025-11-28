@@ -6,7 +6,6 @@ const deepLCodeMap: Record<LanguageCode, string> = {
     'en-US': 'EN',
     'ja-JP': 'JA',
     'zh-CN': 'ZH',
-    'de-DE': 'DE',
 };
 
 // translateWithDeepL 함수는 더 이상 사용하지 않음

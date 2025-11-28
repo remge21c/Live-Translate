@@ -26,7 +26,7 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     }, []);
 
     const scheduleRestart = useCallback(
-        (reason: string, delay = 350) => {
+        (reason: string, delay = 50) => { // 350ms → 50ms로 단축 (음성 손실 최소화)
             if (typeof window === 'undefined') return;
             clearRestartTimeout();
             restartTimeoutRef.current = window.setTimeout(() => {
@@ -48,7 +48,7 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
 
                     console.error(`[SpeechRecognition] Restart failed (${reason})`, error);
                     if (isListeningRef.current) {
-                        scheduleRestart(reason, Math.min(delay + 250, 2000));
+                        scheduleRestart(reason, Math.min(delay + 100, 1000)); // 재시도 간격도 단축
                     }
                 }
             }, delay);
@@ -187,22 +187,32 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     const resetTranscript = useCallback(() => {
         console.log('[SpeechRecognition] Resetting transcript...');
         setTranscript('');
-        // Don't stop and restart, just clear the transcript
-        // The continuous recognition will keep running
+        lastFinalResultRef.current = '';
     }, []);
 
-    // 번역 완료 후 음성인식 세션 재시작 (버퍼 완전 초기화)
+    // 번역 완료 후 음성인식 세션 재시작 (버퍼 완전 초기화, 빠른 재시작)
     const restartSession = useCallback(() => {
         console.log('[SpeechRecognition] Restarting session to clear buffer...');
         setTranscript('');
-        lastFinalResultRef.current = ''; // final 결과 추적도 초기화
+        lastFinalResultRef.current = '';
         
         if (recognitionRef.current && isListeningRef.current) {
             try {
                 // 현재 세션 중지
                 recognitionRef.current.stop();
-                // onend 핸들러가 자동으로 재시작함
-                console.log('[SpeechRecognition] Session stopped, will auto-restart');
+                
+                // onend 핸들러 대기 없이 즉시 재시작 시도 (음성 손실 최소화)
+                setTimeout(() => {
+                    if (isListeningRef.current && recognitionRef.current) {
+                        try {
+                            recognitionRef.current.start();
+                            console.log('[SpeechRecognition] Session restarted immediately');
+                        } catch (e) {
+                            // InvalidStateError면 onend에서 재시작됨
+                            console.log('[SpeechRecognition] Immediate restart skipped, will use onend');
+                        }
+                    }
+                }, 30); // 30ms 후 즉시 재시작 시도
             } catch (e) {
                 console.log('[SpeechRecognition] Error stopping session:', e);
             }

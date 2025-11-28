@@ -5,11 +5,9 @@ import { ChatBubble } from './ChatBubble';
 interface ChatHistoryProps {
     messages: Message[];
     viewer: 'me' | 'partner'; // Who is looking at this history?
-    onDeleteMessage?: (id: string) => void; // 메시지 삭제 콜백
-    isDark?: boolean; // 다크모드 여부
 }
 
-export const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, viewer, onDeleteMessage, isDark = true }) => {
+export const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, viewer }) => {
     const bottomRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -19,13 +17,7 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, viewer, onDe
     return (
         <div className="flex-1 w-full overflow-y-auto px-4 py-2 scrollbar-hide mask-gradient">
             {messages.map((msg) => (
-                <ChatBubble 
-                    key={msg.id} 
-                    message={msg} 
-                    isMe={msg.sender === viewer} 
-                    onDelete={onDeleteMessage}
-                    isDark={isDark}
-                />
+                <ChatBubble key={msg.id} message={msg} isMe={msg.sender === viewer} />
             ))}
             <div ref={bottomRef} />
         </div>

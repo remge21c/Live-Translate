@@ -64,6 +64,49 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
         }
     }, [isListening, clearRestartTimeout]);
 
+    // 화면 보호 모드에서 돌아왔을 때 음성인식 재시작
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && isListeningRef.current && recognitionRef.current) {
+                console.log('[SpeechRecognition] Page became visible, restarting recognition...');
+                // 약간의 딜레이 후 재시작 (브라우저가 완전히 활성화될 시간 확보)
+                setTimeout(() => {
+                    if (isListeningRef.current && recognitionRef.current) {
+                        try {
+                            // 먼저 중지 시도 (이미 중지되어 있을 수 있음)
+                            try {
+                                recognitionRef.current.stop();
+                            } catch (e) {
+                                // 이미 중지된 상태면 무시
+                            }
+                            // 재시작
+                            setTimeout(() => {
+                                if (isListeningRef.current && recognitionRef.current) {
+                                    try {
+                                        recognitionRef.current.start();
+                                        console.log('[SpeechRecognition] Restarted after visibility change');
+                                    } catch (e) {
+                                        console.log('[SpeechRecognition] Restart after visibility failed, scheduling retry');
+                                        scheduleRestart('visibility-change', 200);
+                                    }
+                                }
+                            }, 100);
+                        } catch (e) {
+                            console.error('[SpeechRecognition] Error handling visibility change:', e);
+                        }
+                    }
+                }, 300);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [scheduleRestart]);
+
     // Initialize recognition once
     useEffect(() => {
         if (!('webkitSpeechRecognition' in window)) {

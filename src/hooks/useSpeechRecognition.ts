@@ -65,39 +65,48 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     }, [isListening, clearRestartTimeout]);
 
     // 화면 보호 모드에서 돌아왔을 때 음성인식 재시작
+    const wasHiddenRef = useRef<boolean>(false);
+    
     useEffect(() => {
         if (typeof document === 'undefined') return;
 
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible' && isListeningRef.current && recognitionRef.current) {
-                console.log('[SpeechRecognition] Page became visible, restarting recognition...');
-                // 약간의 딜레이 후 재시작 (브라우저가 완전히 활성화될 시간 확보)
+            const isNowVisible = document.visibilityState === 'visible';
+            const isNowHidden = document.visibilityState === 'hidden';
+            
+            // hidden 상태로 전환되면 기록
+            if (isNowHidden) {
+                wasHiddenRef.current = true;
+                console.log('[SpeechRecognition] Page became hidden');
+                return;
+            }
+            
+            // visible로 전환되었고, 이전에 hidden이었을 때만 재시작
+            if (isNowVisible && wasHiddenRef.current && isListeningRef.current && recognitionRef.current) {
+                wasHiddenRef.current = false;
+                console.log('[SpeechRecognition] Page became visible after being hidden, checking recognition state...');
+                
+                // 약간의 딜레이 후 재시작 시도 (브라우저가 완전히 활성화될 시간 확보)
                 setTimeout(() => {
                     if (isListeningRef.current && recognitionRef.current) {
+                        // 음성인식이 이미 실행 중인지 확인하기 위해 start 시도
+                        // InvalidStateError가 발생하면 이미 실행 중이므로 무시
                         try {
-                            // 먼저 중지 시도 (이미 중지되어 있을 수 있음)
-                            try {
-                                recognitionRef.current.stop();
-                            } catch (e) {
-                                // 이미 중지된 상태면 무시
-                            }
-                            // 재시작
-                            setTimeout(() => {
-                                if (isListeningRef.current && recognitionRef.current) {
-                                    try {
-                                        recognitionRef.current.start();
-                                        console.log('[SpeechRecognition] Restarted after visibility change');
-                                    } catch (e) {
-                                        console.log('[SpeechRecognition] Restart after visibility failed, scheduling retry');
-                                        scheduleRestart('visibility-change', 200);
-                                    }
-                                }
-                            }, 100);
+                            recognitionRef.current.start();
+                            console.log('[SpeechRecognition] Restarted after visibility change');
                         } catch (e) {
-                            console.error('[SpeechRecognition] Error handling visibility change:', e);
+                            const domError = e as DOMException;
+                            if (domError?.name === 'InvalidStateError') {
+                                console.log('[SpeechRecognition] Already running after visibility change');
+                            } else {
+                                console.log('[SpeechRecognition] Restart after visibility failed, scheduling retry');
+                                scheduleRestart('visibility-change', 200);
+                            }
                         }
                     }
-                }, 300);
+                }, 500);
+            } else if (isNowVisible) {
+                wasHiddenRef.current = false;
             }
         };
 

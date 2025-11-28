@@ -73,7 +73,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, onDelete,
 
                 {/* Secondary Text (Other Language) */}
                 {secondaryText && (
-                    <div className={`text-xs mt-2 pt-2 border-t flex justify-between items-center ${
+                    <div className={`text-xs mt-2 pt-2 border-t ${
                         isMe 
                             ? 'border-white/20 text-cyan-100' 
                             : isDark 
@@ -81,19 +81,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, onDelete,
                                 : 'border-gray-300 text-gray-500'
                     }`}>
                         <span>{secondaryText}</span>
-                        {message.translationSource && message.translationSource !== 'pending' && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded ml-2 ${
-                                message.translationSource === 'DeepL'
-                                    ? isDark
-                                        ? 'bg-blue-500/20 text-blue-200 border border-blue-500/30'
-                                        : 'bg-blue-100 text-blue-600 border border-blue-200'
-                                    : isDark
-                                        ? 'bg-slate-500/20 text-slate-400'
-                                        : 'bg-gray-100 text-gray-500'
-                            }`}>
-                                {message.translationSource}
-                            </span>
-                        )}
                     </div>
                 )}
             </div>

@@ -180,5 +180,22 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
         // The continuous recognition will keep running
     }, []);
 
-    return { transcript, resetTranscript };
+    // 번역 완료 후 음성인식 세션 재시작 (버퍼 완전 초기화)
+    const restartSession = useCallback(() => {
+        console.log('[SpeechRecognition] Restarting session to clear buffer...');
+        setTranscript('');
+        
+        if (recognitionRef.current && isListeningRef.current) {
+            try {
+                // 현재 세션 중지
+                recognitionRef.current.stop();
+                // onend 핸들러가 자동으로 재시작함
+                console.log('[SpeechRecognition] Session stopped, will auto-restart');
+            } catch (e) {
+                console.log('[SpeechRecognition] Error stopping session:', e);
+            }
+        }
+    }, []);
+
+    return { transcript, resetTranscript, restartSession };
 };

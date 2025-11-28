@@ -49,7 +49,7 @@ function App() {
   const isListening = activeMic !== null;
 
   const { volume } = useAudio(isListening);
-  const { transcript, resetTranscript } = useSpeechRecognition(isListening, currentLanguage);
+  const { transcript, resetTranscript, restartSession } = useSpeechRecognition(isListening, currentLanguage);
   const isLandscape = layoutMode === 'landscape';
   const containerWidthClasses = isLandscape
     ? 'max-w-none px-4'
@@ -186,17 +186,30 @@ function App() {
     if (!text) return;
 
     const now = Date.now();
-    if (text === lastProcessedRef.current && now - lastProcessedAtRef.current < 2000) {
-      console.log('[commitTranscript] Skipping duplicate commit');
-      return;
+    
+    // 중복 체크 강화: 정확히 같은 텍스트이거나, 이전 번역 텍스트로 시작하는 경우 스킵
+    // (Web Speech API가 이전 결과와 새 결과를 합쳐서 반환하는 문제 방지)
+    if (lastProcessedRef.current && now - lastProcessedAtRef.current < 3000) {
+      if (text === lastProcessedRef.current) {
+        console.log('[commitTranscript] Skipping exact duplicate');
+        return;
+      }
+      // 새 텍스트가 이전 번역 텍스트로 시작하면 (합쳐진 결과) 스킵
+      if (text.startsWith(lastProcessedRef.current)) {
+        console.log('[commitTranscript] Skipping merged result (starts with previous):', text);
+        // 새로운 부분만 있으면 그것만 처리할 수도 있지만, 
+        // 음성인식 세션을 재시작하여 깔끔하게 처리
+        restartSession();
+        return;
+      }
     }
 
     lastProcessedRef.current = text;
     lastProcessedAtRef.current = now;
     
-    // 번역 전에 먼저 transcript 초기화 (새 음성 인식 준비)
-    // 번역 API 호출 중에도 새로운 음성을 놓치지 않도록 함
-    resetTranscript();
+    // 음성인식 세션 재시작 (버퍼 완전 초기화)
+    // 이전 결과가 다음 번역에 합쳐지는 것을 방지
+    restartSession();
     
     // 번역은 비동기로 진행 (새 음성 인식과 병렬 처리)
     await addMockMessage(text, sender);
@@ -204,7 +217,7 @@ function App() {
     if (reason === 'silence') {
       showNotice('자동 정지 감지: 번역을 전송했습니다');
     }
-  }, [addMockMessage, resetTranscript, showNotice]);
+  }, [addMockMessage, restartSession, showNotice]);
 
   useEffect(() => {
     transcriptRef.current = transcript;

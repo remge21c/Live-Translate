@@ -273,7 +273,7 @@ function App() {
     };
   }, [clearSilenceTimer]);
 
-  const renderPartnerSection = (variant: 'portrait' | 'landscape') => (
+  const renderPartnerSection = (variant: 'portrait' | 'landscape', isLeftPanel?: boolean) => (
     <div
       className={`flex-1 flex flex-col min-w-0 transition-colors duration-300 relative overflow-hidden ${
         variant === 'portrait'
@@ -303,7 +303,13 @@ function App() {
             ? 'bg-slate-700/40 border-slate-600/50' 
             : 'bg-white/60 border-gray-200'
         }`}>
-          <ChatHistory messages={messages} viewer="partner" onDeleteMessage={handleDeleteMessage} isDark={isDark} />
+          <ChatHistory 
+            messages={messages} 
+            viewer="partner" 
+            onDeleteMessage={handleDeleteMessage} 
+            isDark={isDark} 
+            alignLeft={variant === 'landscape' ? isLeftPanel : undefined}
+          />
         </div>
       </div>
 
@@ -330,7 +336,7 @@ function App() {
     </div>
   );
 
-  const renderMeSection = (variant: 'portrait' | 'landscape') => (
+  const renderMeSection = (variant: 'portrait' | 'landscape', isLeftPanel?: boolean) => (
     <div
       className={`flex-1 flex flex-col min-w-0 transition-colors duration-300 relative overflow-hidden ${
         variant === 'portrait' 
@@ -346,7 +352,13 @@ function App() {
             ? 'bg-slate-800/60 border-slate-700' 
             : 'bg-gray-50/80 border-gray-200'
         }`}>
-          <ChatHistory messages={messages} viewer="me" onDeleteMessage={handleDeleteMessage} isDark={isDark} />
+          <ChatHistory 
+            messages={messages} 
+            viewer="me" 
+            onDeleteMessage={handleDeleteMessage} 
+            isDark={isDark} 
+            alignLeft={variant === 'landscape' ? isLeftPanel : undefined}
+          />
         </div>
       </div>
 
@@ -451,13 +463,13 @@ function App() {
         {isLandscape ? (
           landscapeLayout === 'partner-left' ? (
             <>
-              {renderPartnerSection('landscape')}
-              {renderMeSection('landscape')}
+              {renderPartnerSection('landscape', true)}
+              {renderMeSection('landscape', false)}
             </>
           ) : (
             <>
-              {renderMeSection('landscape')}
-              {renderPartnerSection('landscape')}
+              {renderMeSection('landscape', true)}
+              {renderPartnerSection('landscape', false)}
             </>
           )
         ) : (

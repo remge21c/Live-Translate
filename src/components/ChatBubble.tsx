@@ -7,12 +7,14 @@ interface ChatBubbleProps {
     isMe: boolean; // "Me" relative to the viewer of this specific bubble list
     onDelete?: (id: string) => void;
     isDark?: boolean;
+    alignLeft?: boolean; // 강제로 왼쪽 정렬 (가로모드 왼쪽 패널용)
 }
 
-export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, onDelete, isDark = true }) => {
+export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, onDelete, isDark = true, alignLeft }) => {
     // Logic:
     // Align Right if I sent it (isMe).
     // Align Left if Partner sent it (!isMe).
+    // But if alignLeft is explicitly set, use that for alignment
 
     // Content:
     // We want to show both languages, but prioritize the "Viewer's Language".
@@ -22,6 +24,10 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, onDelete,
     const primaryText = isMe ? message.text : message.translatedText;
     const secondaryText = isMe ? message.translatedText : message.text;
 
+    // 정렬 결정: alignLeft가 명시되면 그것을 사용, 아니면 isMe 기준
+    const shouldAlignLeft = alignLeft !== undefined ? alignLeft : !isMe;
+    const shouldAlignRight = !shouldAlignLeft;
+
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (onDelete) {
@@ -30,18 +36,19 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, onDelete,
     };
 
     return (
-        <div className={`flex w-full mb-4 ${isMe ? 'justify-end' : 'justify-start'}`}>
+        <div className={`flex w-full mb-4 ${shouldAlignRight ? 'justify-end' : 'justify-start'}`}>
             <div
                 className={`
                     max-w-[80%] rounded-2xl p-4 shadow-md flex flex-col relative group
                     ${isMe
                         ? isDark 
-                            ? 'bg-cyan-600 text-white rounded-tr-none'
-                            : 'bg-blue-500 text-white rounded-tr-none'
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-blue-500 text-white'
                         : isDark
-                            ? 'bg-slate-700 text-slate-200 rounded-tl-none'
-                            : 'bg-gray-200 text-gray-800 rounded-tl-none'
+                            ? 'bg-slate-700 text-slate-200'
+                            : 'bg-gray-200 text-gray-800'
                     }
+                    ${shouldAlignRight ? 'rounded-tr-none' : 'rounded-tl-none'}
                 `}
             >
                 {/* 삭제 버튼 */}

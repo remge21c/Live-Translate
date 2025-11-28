@@ -7,9 +7,10 @@ interface ChatHistoryProps {
     viewer: 'me' | 'partner'; // Who is looking at this history?
     onDeleteMessage?: (id: string) => void;
     isDark?: boolean;
+    alignLeft?: boolean; // 가로모드에서 왼쪽 패널이면 true, 오른쪽 패널이면 false
 }
 
-export const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, viewer, onDeleteMessage, isDark = true }) => {
+export const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, viewer, onDeleteMessage, isDark = true, alignLeft }) => {
     const bottomRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -25,6 +26,7 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, viewer, onDe
                     isMe={msg.sender === viewer} 
                     onDelete={onDeleteMessage}
                     isDark={isDark}
+                    alignLeft={alignLeft}
                 />
             ))}
             <div ref={bottomRef} />

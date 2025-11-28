@@ -10,7 +10,7 @@ export interface Message {
     id: string;
     text: string;
     translatedText?: string;
-    translationSource?: 'DeepL' | 'MyMemory' | 'Dictionary' | 'Error';
+    translationSource?: 'DeepL' | 'MyMemory' | 'Dictionary' | 'Error' | 'pending';
     sender: 'me' | 'partner';
     timestamp: number;
     language: LanguageCode;

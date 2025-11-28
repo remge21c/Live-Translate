@@ -15,6 +15,8 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     const previousLanguageRef = useRef<string>(language);
     const restartTimeoutRef = useRef<number | null>(null);
     const lastFinalResultRef = useRef<string>(''); // 마지막 final 결과 추적 (중복 방지)
+    const lastActivityRef = useRef<number>(Date.now()); // 마지막 활동 시간 (watchdog용)
+    const watchdogIntervalRef = useRef<number | null>(null); // watchdog 타이머
 
     const clearRestartTimeout = useCallback(() => {
         if (restartTimeoutRef.current !== null) {
@@ -130,6 +132,9 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
         recognitionRef.current.lang = language;
 
         recognitionRef.current.onresult = (event: any) => {
+            // 활동 시간 업데이트 (watchdog용)
+            lastActivityRef.current = Date.now();
+            
             let interimTranscript = '';
             let finalTranscript = '';
 
@@ -226,6 +231,7 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
                 recognitionRef.current.start();
                 console.log('[SpeechRecognition] Started');
                 clearRestartTimeout();
+                lastActivityRef.current = Date.now();
             } catch (e) {
                 console.log('[SpeechRecognition] Already started');
             }
@@ -235,6 +241,66 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
             console.log('[SpeechRecognition] Stopped');
         }
     }, [isListening, clearRestartTimeout]);
+
+    // Watchdog: 주기적으로 음성인식 상태 확인 및 재시작
+    // Web Speech API가 자동으로 중단되는 경우를 대비
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const WATCHDOG_INTERVAL = 5000; // 5초마다 체크
+        const INACTIVITY_THRESHOLD = 10000; // 10초 이상 무응답이면 재시작 시도
+
+        const checkAndRestart = () => {
+            if (!isListeningRef.current || !recognitionRef.current) {
+                return;
+            }
+
+            const now = Date.now();
+            const timeSinceLastActivity = now - lastActivityRef.current;
+
+            // 10초 이상 활동이 없으면 음성인식이 중단되었을 가능성이 높음
+            if (timeSinceLastActivity > INACTIVITY_THRESHOLD) {
+                console.log(`[SpeechRecognition] Watchdog: No activity for ${timeSinceLastActivity}ms, attempting restart...`);
+                
+                try {
+                    // 먼저 start 시도 (이미 중단된 경우)
+                    recognitionRef.current.start();
+                    lastActivityRef.current = now;
+                    console.log('[SpeechRecognition] Watchdog: Restarted successfully');
+                } catch (e) {
+                    const domError = e as DOMException;
+                    if (domError?.name === 'InvalidStateError') {
+                        // 이미 실행 중 - 정상 상태, 활동 시간만 업데이트
+                        console.log('[SpeechRecognition] Watchdog: Already running, updating activity time');
+                        lastActivityRef.current = now;
+                    } else {
+                        // 다른 에러 - stop 후 재시작 시도
+                        console.log('[SpeechRecognition] Watchdog: Error, trying stop then start');
+                        try {
+                            recognitionRef.current.stop();
+                        } catch (stopErr) {
+                            // 무시
+                        }
+                        scheduleRestart('watchdog', 200);
+                    }
+                }
+            }
+        };
+
+        if (isListening) {
+            // watchdog 시작
+            watchdogIntervalRef.current = window.setInterval(checkAndRestart, WATCHDOG_INTERVAL);
+            console.log('[SpeechRecognition] Watchdog started');
+        }
+
+        return () => {
+            if (watchdogIntervalRef.current !== null) {
+                window.clearInterval(watchdogIntervalRef.current);
+                watchdogIntervalRef.current = null;
+                console.log('[SpeechRecognition] Watchdog stopped');
+            }
+        };
+    }, [isListening, scheduleRestart]);
 
     const resetTranscript = useCallback(() => {
         console.log('[SpeechRecognition] Resetting transcript...');

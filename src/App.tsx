@@ -186,7 +186,7 @@ function App() {
     if (!text) return;
 
     const now = Date.now();
-    let forceRestart = reason === 'mic-off';
+    let forceRestart = reason === 'mic-off' || reason === 'silence';
     
     if (lastProcessedRef.current) {
       const isRecent = now - lastProcessedAtRef.current < 3000;

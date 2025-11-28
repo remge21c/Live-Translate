@@ -247,8 +247,8 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        const WATCHDOG_INTERVAL = 7000; // 7초마다 체크
-        const INACTIVITY_THRESHOLD = 15000; // 15초 이상 무응답이면 재시작 시도
+        const WATCHDOG_INTERVAL = 3000; // 3초마다 체크 (더 자주)
+        const INACTIVITY_THRESHOLD = 5000; // 5초 이상 무응답이면 재시작 시도 (더 빠르게)
 
         const checkAndRestart = () => {
             if (!isListeningRef.current || !recognitionRef.current) {
@@ -258,32 +258,36 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
             const now = Date.now();
             const timeSinceLastActivity = now - lastActivityRef.current;
 
-            // 10초 이상 활동이 없으면 음성인식이 중단되었을 가능성이 높음
+            // 5초 이상 활동이 없으면 음성인식이 중단되었을 가능성이 높음
             if (timeSinceLastActivity > INACTIVITY_THRESHOLD) {
-                console.log(`[SpeechRecognition] Watchdog: No activity for ${timeSinceLastActivity}ms, attempting restart...`);
+                console.log(`[SpeechRecognition] Watchdog: No activity for ${timeSinceLastActivity}ms, forcing restart...`);
                 
+                // 먼저 stop 시도
                 try {
-                    // 먼저 start 시도 (이미 중단된 경우)
-                    recognitionRef.current.start();
-                    lastActivityRef.current = now;
-                    console.log('[SpeechRecognition] Watchdog: Restarted successfully');
-                } catch (e) {
-                    const domError = e as DOMException;
-                    if (domError?.name === 'InvalidStateError') {
-                        // 이미 실행 중 - 정상 상태, 활동 시간만 업데이트
-                        console.log('[SpeechRecognition] Watchdog: Already running, updating activity time');
-                        lastActivityRef.current = now;
-                    } else {
-                        // 다른 에러 - stop 후 재시작 시도
-                        console.log('[SpeechRecognition] Watchdog: Error, trying stop then start');
-                        try {
-                            recognitionRef.current.stop();
-                        } catch (stopErr) {
-                            // 무시
-                        }
-                        scheduleRestart('watchdog', 200);
-                    }
+                    recognitionRef.current.stop();
+                } catch (stopErr) {
+                    // 무시
                 }
+                
+                // 충분한 딜레이 후 재시작
+                setTimeout(() => {
+                    if (isListeningRef.current && recognitionRef.current) {
+                        try {
+                            recognitionRef.current.start();
+                            lastActivityRef.current = Date.now();
+                            console.log('[SpeechRecognition] Watchdog: Restarted successfully');
+                        } catch (e) {
+                            const domError = e as DOMException;
+                            if (domError?.name === 'InvalidStateError') {
+                                console.log('[SpeechRecognition] Watchdog: Already running');
+                                lastActivityRef.current = Date.now();
+                            } else {
+                                console.log('[SpeechRecognition] Watchdog: Restart failed, scheduling retry');
+                                scheduleRestart('watchdog', 300);
+                            }
+                        }
+                    }
+                }, 200);
             }
         };
 
@@ -308,29 +312,36 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
         lastFinalResultRef.current = '';
     }, []);
 
-    // 번역 완료 후 음성인식 세션 재시작 (버퍼 완전 초기화, 빠른 재시작)
+    // 번역 완료 후 음성인식 세션 재시작 (버퍼 완전 초기화, 안정적인 재시작)
     const restartSession = useCallback(() => {
         console.log('[SpeechRecognition] Restarting session to clear buffer...');
         setTranscript('');
         lastFinalResultRef.current = '';
+        lastActivityRef.current = Date.now(); // 활동 시간 업데이트
         
         if (recognitionRef.current && isListeningRef.current) {
             try {
                 // 현재 세션 중지
                 recognitionRef.current.stop();
                 
-                // onend 핸들러 대기 없이 즉시 재시작 시도 (음성 손실 최소화)
+                // 충분한 딜레이 후 재시작 시도 (Web Speech API가 완전히 종료될 시간 확보)
                 setTimeout(() => {
                     if (isListeningRef.current && recognitionRef.current) {
                         try {
                             recognitionRef.current.start();
-                            console.log('[SpeechRecognition] Session restarted immediately');
+                            lastActivityRef.current = Date.now();
+                            console.log('[SpeechRecognition] Session restarted after delay');
                         } catch (e) {
-                            // InvalidStateError면 onend에서 재시작됨
-                            console.log('[SpeechRecognition] Immediate restart skipped, will use onend');
+                            const domError = e as DOMException;
+                            if (domError?.name === 'InvalidStateError') {
+                                console.log('[SpeechRecognition] Already running after restart attempt');
+                            } else {
+                                // 실패하면 onend에서 재시작됨
+                                console.log('[SpeechRecognition] Restart failed, will retry via onend');
+                            }
                         }
                     }
-                }, 30); // 30ms 후 즉시 재시작 시도
+                }, 150); // 150ms 후 재시작 시도 (더 안정적)
             } catch (e) {
                 console.log('[SpeechRecognition] Error stopping session:', e);
             }

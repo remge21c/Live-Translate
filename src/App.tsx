@@ -20,8 +20,8 @@ const getInitialTheme = (): 'dark' | 'light' => {
   return stored === 'light' ? 'light' : 'dark';
 };
 
-const SILENCE_TIMEOUT_MS = 1600; // 빠른 발화 중간 끊김 방지를 위해 1.6초로 조정
-const SENTENCE_END_TIMEOUT_MS = 400; // 문장 끝 감지 후 빠른 전송을 위한 짧은 타임아웃
+const SILENCE_TIMEOUT_MS = 2000; // 빠른 발화 중간 끊김 방지를 위해 2초로 조정
+const SENTENCE_END_TIMEOUT_MS = 1200; // 문장 끝 감지 후에도 충분히 대기 (1.2초)
 const NOTICE_DURATION_MS = 2000;
 
 // 문장 끝 패턴 감지 (마침표, 물음표, 느낌표, 일본어 마침표 등)

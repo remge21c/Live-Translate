@@ -182,22 +182,25 @@ function App() {
   }, [myLanguage, partnerLanguage]);
 
   const commitTranscript = useCallback(async (rawText: string, sender: 'me' | 'partner', reason: 'silence' | 'mic-off') => {
-    const text = rawText.trim();
+    let text = rawText.trim();
     if (!text) return;
 
     const now = Date.now();
     
-    // 중복 체크 강화: 정확히 같은 텍스트이거나, 이전 번역 텍스트로 시작하는 경우 스킵
-    if (lastProcessedRef.current && now - lastProcessedAtRef.current < 3000) {
-      if (text === lastProcessedRef.current) {
+    if (lastProcessedRef.current) {
+      const isRecent = now - lastProcessedAtRef.current < 3000;
+      if (isRecent && text === lastProcessedRef.current) {
         console.log('[commitTranscript] Skipping exact duplicate');
         return;
       }
-      // 새 텍스트가 이전 번역 텍스트로 시작하면 (합쳐진 결과) 스킵
       if (text.startsWith(lastProcessedRef.current)) {
-        console.log('[commitTranscript] Skipping merged result (starts with previous):', text);
-        restartSession();
-        return;
+        const newSegment = text.slice(lastProcessedRef.current.length).trim();
+        if (!newSegment) {
+          console.log('[commitTranscript] Only duplicate content detected, skipping');
+          return;
+        }
+        console.log('[commitTranscript] Detected merged transcript, using new segment:', newSegment);
+        text = newSegment;
       }
     }
 

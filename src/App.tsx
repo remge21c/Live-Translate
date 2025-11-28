@@ -91,6 +91,7 @@ function App() {
   // Track last processed transcript to avoid duplicates
   const lastProcessedRef = useRef<string>('');
   const lastProcessedAtRef = useRef<number>(0);
+  const isProcessingRef = useRef<boolean>(false); // 번역 처리 중 플래그
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousActiveMicRef = useRef<'me' | 'partner' | null>(null);
@@ -185,6 +186,12 @@ function App() {
     const text = rawText.trim();
     if (!text) return;
 
+    // 이미 처리 중이면 스킵 (중복 호출 방지)
+    if (isProcessingRef.current) {
+      console.log('[commitTranscript] Already processing, skipping');
+      return;
+    }
+
     const now = Date.now();
     
     // 중복 체크 강화: 정확히 같은 텍스트이거나, 이전 번역 텍스트로 시작하는 경우 스킵
@@ -204,6 +211,8 @@ function App() {
       }
     }
 
+    // 처리 시작
+    isProcessingRef.current = true;
     lastProcessedRef.current = text;
     lastProcessedAtRef.current = now;
     
@@ -211,11 +220,16 @@ function App() {
     // 이전 결과가 다음 번역에 합쳐지는 것을 방지
     restartSession();
     
-    // 번역은 비동기로 진행 (새 음성 인식과 병렬 처리)
-    await addMockMessage(text, sender);
+    try {
+      // 번역은 비동기로 진행 (새 음성 인식과 병렬 처리)
+      await addMockMessage(text, sender);
 
-    if (reason === 'silence') {
-      showNotice('자동 정지 감지: 번역을 전송했습니다');
+      if (reason === 'silence') {
+        showNotice('자동 정지 감지: 번역을 전송했습니다');
+      }
+    } finally {
+      // 처리 완료
+      isProcessingRef.current = false;
     }
   }, [addMockMessage, restartSession, showNotice]);
 

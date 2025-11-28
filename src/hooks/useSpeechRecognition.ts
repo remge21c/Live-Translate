@@ -14,6 +14,7 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     const isListeningRef = useRef<boolean>(isListening);
     const previousLanguageRef = useRef<string>(language);
     const restartTimeoutRef = useRef<number | null>(null);
+    const lastFinalResultRef = useRef<string>(''); // 마지막 final 결과 추적 (중복 방지)
 
     const clearRestartTimeout = useCallback(() => {
         if (restartTimeoutRef.current !== null) {
@@ -88,8 +89,18 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
                 }
             }
 
-            if (finalTranscript || interimTranscript) {
-                setTranscript(finalTranscript || interimTranscript);
+            // final 결과가 있으면 우선 사용
+            if (finalTranscript) {
+                // 이전 final 결과와 같으면 무시 (중복 방지)
+                if (finalTranscript.trim() === lastFinalResultRef.current) {
+                    console.log('[SpeechRecognition] Skipping duplicate final result');
+                    return;
+                }
+                lastFinalResultRef.current = finalTranscript.trim();
+                setTranscript(finalTranscript);
+            } else if (interimTranscript) {
+                // interim 결과는 항상 업데이트 (실시간 표시용)
+                setTranscript(interimTranscript);
             }
         };
 
@@ -184,6 +195,7 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     const restartSession = useCallback(() => {
         console.log('[SpeechRecognition] Restarting session to clear buffer...');
         setTranscript('');
+        lastFinalResultRef.current = ''; // final 결과 추적도 초기화
         
         if (recognitionRef.current && isListeningRef.current) {
             try {

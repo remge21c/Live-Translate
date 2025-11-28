@@ -20,7 +20,7 @@ const getInitialTheme = (): 'dark' | 'light' => {
   return stored === 'light' ? 'light' : 'dark';
 };
 
-const SILENCE_TIMEOUT_MS = 1200; // 1.8초 → 1.2초로 단축하여 응답성 향상
+const SILENCE_TIMEOUT_MS = 1600; // 빠른 발화 중간 끊김 방지를 위해 1.6초로 조정
 const SENTENCE_END_TIMEOUT_MS = 400; // 문장 끝 감지 후 빠른 전송을 위한 짧은 타임아웃
 const NOTICE_DURATION_MS = 2000;
 
@@ -49,7 +49,7 @@ function App() {
   const isListening = activeMic !== null;
 
   const { volume } = useAudio(isListening);
-  const { transcript, restartSession } = useSpeechRecognition(isListening, currentLanguage);
+  const { transcript, resetTranscript, restartSession } = useSpeechRecognition(isListening, currentLanguage);
   const isLandscape = layoutMode === 'landscape';
   const containerWidthClasses = isLandscape
     ? 'max-w-none px-4'
@@ -186,6 +186,7 @@ function App() {
     if (!text) return;
 
     const now = Date.now();
+    let forceRestart = reason === 'mic-off';
     
     if (lastProcessedRef.current) {
       const isRecent = now - lastProcessedAtRef.current < 3000;
@@ -201,14 +202,18 @@ function App() {
         }
         console.log('[commitTranscript] Detected merged transcript, using new segment:', newSegment);
         text = newSegment;
+        forceRestart = true;
       }
     }
 
     lastProcessedRef.current = text;
     lastProcessedAtRef.current = now;
-    
-    // 음성인식 세션 빠른 재시작 (버퍼 초기화 + 30ms 후 즉시 재시작)
-    restartSession();
+
+    // 기본적으로 transcript만 초기화하고, 필요할 때만 세션 재시작
+    resetTranscript();
+    if (forceRestart) {
+      restartSession();
+    }
     
     // 번역 진행
     await addMockMessage(text, sender);

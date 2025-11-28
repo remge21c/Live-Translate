@@ -247,8 +247,8 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        const WATCHDOG_INTERVAL = 5000; // 5초마다 체크
-        const INACTIVITY_THRESHOLD = 10000; // 10초 이상 무응답이면 재시작 시도
+        const WATCHDOG_INTERVAL = 7000; // 7초마다 체크
+        const INACTIVITY_THRESHOLD = 15000; // 15초 이상 무응답이면 재시작 시도
 
         const checkAndRestart = () => {
             if (!isListeningRef.current || !recognitionRef.current) {

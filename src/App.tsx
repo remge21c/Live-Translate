@@ -131,6 +131,18 @@ function App() {
     console.log('[handleClearAllMessages] All messages cleared');
   }, []);
 
+  // 언어별 "번역 중..." 메시지
+  const getPendingText = (lang: LanguageCode): string => {
+    const pendingTexts: Record<LanguageCode, string> = {
+      'ko-KR': '번역 중...',
+      'en-US': 'Translating...',
+      'ja-JP': '翻訳中...',
+      'zh-CN': '翻译中...',
+      'de-DE': 'Übersetzen...',
+    };
+    return pendingTexts[lang] || 'Translating...';
+  };
+
   const addMockMessage = useCallback(async (text: string, sender: 'me' | 'partner') => {
     const sourceLang = sender === 'me' ? myLanguage : partnerLanguage;
     const targetLang = sender === 'me' ? partnerLanguage : myLanguage;
@@ -142,11 +154,12 @@ function App() {
     console.log('[addMockMessage] Target Lang:', targetLang);
 
     // 번역 중 미리보기 메시지 즉시 표시 (체감 지연 감소)
+    // 상대방 언어로 "번역 중..." 표시
     const tempId = Date.now().toString();
     const pendingMessage: Message = {
       id: tempId,
       text: text,
-      translatedText: '번역 중...',
+      translatedText: getPendingText(targetLang),
       translationSource: 'pending',
       sender,
       timestamp: Date.now(),

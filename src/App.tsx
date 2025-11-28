@@ -20,8 +20,12 @@ const getInitialTheme = (): 'dark' | 'light' => {
   return stored === 'light' ? 'light' : 'dark';
 };
 
-const SILENCE_TIMEOUT_MS = 1800;
+const SILENCE_TIMEOUT_MS = 1200; // 1.8초 → 1.2초로 단축하여 응답성 향상
+const SENTENCE_END_TIMEOUT_MS = 400; // 문장 끝 감지 후 빠른 전송을 위한 짧은 타임아웃
 const NOTICE_DURATION_MS = 2000;
+
+// 문장 끝 패턴 감지 (마침표, 물음표, 느낌표, 일본어 마침표 등)
+const SENTENCE_END_PATTERN = /[.?!。？！]$/;
 
 function App() {
   const [myLanguage, setMyLanguage] = useState<LanguageCode>('ko-KR');
@@ -136,24 +140,32 @@ function App() {
     console.log('[addMockMessage] Text:', text);
     console.log('[addMockMessage] Source Lang:', sourceLang);
     console.log('[addMockMessage] Target Lang:', targetLang);
+
+    // 번역 중 미리보기 메시지 즉시 표시 (체감 지연 감소)
+    const tempId = Date.now().toString();
+    const pendingMessage: Message = {
+      id: tempId,
+      text: text,
+      translatedText: '번역 중...',
+      translationSource: 'pending',
+      sender,
+      timestamp: Date.now(),
+      language: sourceLang,
+    };
+    setMessages(prev => [...prev, pendingMessage]);
+
     console.log('[addMockMessage] Using serverless function for translation');
 
     const { text: translatedText, source: translationSource } = await translate(text, targetLang);
 
     console.log('[addMockMessage] Translated:', translatedText, 'Source:', translationSource);
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: text,
-      translatedText,
-      translationSource,
-      sender,
-      timestamp: Date.now(),
-      language: sourceLang,
-    };
-
-    console.log('[addMockMessage] Message object:', newMessage);
-    setMessages(prev => [...prev, newMessage]);
+    // 번역 완료 후 미리보기 메시지를 실제 결과로 교체
+    setMessages(prev => prev.map(msg => 
+      msg.id === tempId 
+        ? { ...msg, translatedText, translationSource }
+        : msg
+    ));
   }, [myLanguage, partnerLanguage]);
 
   const commitTranscript = useCallback(async (rawText: string, sender: 'me' | 'partner', reason: 'silence' | 'mic-off') => {
@@ -194,7 +206,7 @@ function App() {
     previousActiveMicRef.current = activeMic;
   }, [activeMic, commitTranscript, clearSilenceTimer]);
 
-  // Auto-commit on silence (timer-based)
+  // Auto-commit on silence (timer-based) + 문장 끝 패턴 감지
   useEffect(() => {
     if (!isListening || !activeMic) {
       clearSilenceTimer();
@@ -214,10 +226,15 @@ function App() {
 
     clearSilenceTimer();
     const sender = activeMic;
+    
+    // 문장 끝 패턴(. ? ! 。 등) 감지 시 더 짧은 타임아웃 사용
+    const hasSentenceEnd = SENTENCE_END_PATTERN.test(trimmed);
+    const timeoutMs = hasSentenceEnd ? SENTENCE_END_TIMEOUT_MS : SILENCE_TIMEOUT_MS;
+    
     silenceTimerRef.current = window.setTimeout(() => {
       if (!sender) return;
       void commitTranscript(trimmed, sender, 'silence');
-    }, SILENCE_TIMEOUT_MS);
+    }, timeoutMs);
 
     return () => {
       clearSilenceTimer();

@@ -252,12 +252,12 @@ export const useSpeechRecognition = (
         }
     }, [isListening, clearRestartTimeout]);
 
-    // Watchdog: 주기적으로 음성인식 상태 확인 및 5초 무음시 자동 정지
+    // Watchdog: 주기적으로 음성인식 상태 확인 및 10초 무음시 자동 정지
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
         const WATCHDOG_INTERVAL = 1000; // 1초마다 체크
-        const AUTO_STOP_THRESHOLD = 5000; // 5초 이상 무응답이면 마이크 자동 정지
+        const AUTO_STOP_THRESHOLD = 10000; // 10초 이상 무응답이면 마이크 자동 정지
 
         const checkAndAutoStop = () => {
             if (!isListeningRef.current || !recognitionRef.current) {

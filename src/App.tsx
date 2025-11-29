@@ -111,12 +111,11 @@ function App() {
     }, NOTICE_DURATION_MS);
   }, []);
 
-  // 5초 이상 음성인식이 없으면 마이크 자동 정지
+  // 10초 이상 음성인식이 없으면 마이크 자동 정지
   const handleAutoStop = useCallback(() => {
     console.log('[App] Auto-stopping mic due to silence');
     setActiveMic(null);
-    showNotice('5초간 음성이 없어 마이크가 자동으로 꺼졌습니다');
-  }, [showNotice]);
+  }, []);
   
   const { transcript, resetTranscript, restartSession } = useSpeechRecognition(isListening, currentLanguage, handleAutoStop);
 

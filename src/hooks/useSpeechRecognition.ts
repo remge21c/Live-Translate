@@ -8,7 +8,11 @@ export interface SpeechRecognitionResult {
     language: string; // 'ko-KR' or 'en-US'
 }
 
-export const useSpeechRecognition = (isListening: boolean, language: string) => {
+export const useSpeechRecognition = (
+    isListening: boolean, 
+    language: string,
+    onAutoStop?: () => void // 자동 정지 콜백
+) => {
     const [transcript, setTranscript] = useState<string>('');
     const recognitionRef = useRef<any>(null);
     const isListeningRef = useRef<boolean>(isListening);
@@ -17,6 +21,12 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
     const lastFinalResultRef = useRef<string>(''); // 마지막 final 결과 추적 (중복 방지)
     const lastActivityRef = useRef<number>(Date.now()); // 마지막 활동 시간 (watchdog용)
     const watchdogIntervalRef = useRef<number | null>(null); // watchdog 타이머
+    const autoStopCallbackRef = useRef<(() => void) | undefined>(onAutoStop);
+    
+    // 콜백 ref 업데이트
+    useEffect(() => {
+        autoStopCallbackRef.current = onAutoStop;
+    }, [onAutoStop]);
 
     const clearRestartTimeout = useCallback(() => {
         if (restartTimeoutRef.current !== null) {
@@ -242,15 +252,14 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
         }
     }, [isListening, clearRestartTimeout]);
 
-    // Watchdog: 주기적으로 음성인식 상태 확인 및 재시작
-    // Web Speech API가 자동으로 중단되는 경우를 대비
+    // Watchdog: 주기적으로 음성인식 상태 확인 및 5초 무음시 자동 정지
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        const WATCHDOG_INTERVAL = 3000; // 3초마다 체크 (더 자주)
-        const INACTIVITY_THRESHOLD = 5000; // 5초 이상 무응답이면 재시작 시도 (더 빠르게)
+        const WATCHDOG_INTERVAL = 1000; // 1초마다 체크
+        const AUTO_STOP_THRESHOLD = 5000; // 5초 이상 무응답이면 마이크 자동 정지
 
-        const checkAndRestart = () => {
+        const checkAndAutoStop = () => {
             if (!isListeningRef.current || !recognitionRef.current) {
                 return;
             }
@@ -258,43 +267,22 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
             const now = Date.now();
             const timeSinceLastActivity = now - lastActivityRef.current;
 
-            // 5초 이상 활동이 없으면 음성인식이 중단되었을 가능성이 높음
-            if (timeSinceLastActivity > INACTIVITY_THRESHOLD) {
-                console.log(`[SpeechRecognition] Watchdog: No activity for ${timeSinceLastActivity}ms, forcing restart...`);
+            // 5초 이상 활동이 없으면 마이크 자동 정지
+            if (timeSinceLastActivity > AUTO_STOP_THRESHOLD) {
+                console.log(`[SpeechRecognition] Watchdog: No activity for ${timeSinceLastActivity}ms, auto-stopping mic...`);
                 
-                // 먼저 stop 시도
-                try {
-                    recognitionRef.current.stop();
-                } catch (stopErr) {
-                    // 무시
+                // 자동 정지 콜백 호출 (마이크 끄기)
+                if (autoStopCallbackRef.current) {
+                    autoStopCallbackRef.current();
                 }
-                
-                // 충분한 딜레이 후 재시작
-                setTimeout(() => {
-                    if (isListeningRef.current && recognitionRef.current) {
-                        try {
-                            recognitionRef.current.start();
-                            lastActivityRef.current = Date.now();
-                            console.log('[SpeechRecognition] Watchdog: Restarted successfully');
-                        } catch (e) {
-                            const domError = e as DOMException;
-                            if (domError?.name === 'InvalidStateError') {
-                                console.log('[SpeechRecognition] Watchdog: Already running');
-                                lastActivityRef.current = Date.now();
-                            } else {
-                                console.log('[SpeechRecognition] Watchdog: Restart failed, scheduling retry');
-                                scheduleRestart('watchdog', 300);
-                            }
-                        }
-                    }
-                }, 200);
             }
         };
 
         if (isListening) {
             // watchdog 시작
-            watchdogIntervalRef.current = window.setInterval(checkAndRestart, WATCHDOG_INTERVAL);
-            console.log('[SpeechRecognition] Watchdog started');
+            lastActivityRef.current = Date.now(); // 시작 시 활동 시간 초기화
+            watchdogIntervalRef.current = window.setInterval(checkAndAutoStop, WATCHDOG_INTERVAL);
+            console.log('[SpeechRecognition] Watchdog started (auto-stop after 5s silence)');
         }
 
         return () => {
@@ -304,7 +292,7 @@ export const useSpeechRecognition = (isListening: boolean, language: string) => 
                 console.log('[SpeechRecognition] Watchdog stopped');
             }
         };
-    }, [isListening, scheduleRestart]);
+    }, [isListening]);
 
     const resetTranscript = useCallback(() => {
         console.log('[SpeechRecognition] Resetting transcript...');

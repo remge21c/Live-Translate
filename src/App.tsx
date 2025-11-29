@@ -49,7 +49,6 @@ function App() {
   const isListening = activeMic !== null;
 
   const { volume } = useAudio(isListening);
-  const { transcript, resetTranscript, restartSession } = useSpeechRecognition(isListening, currentLanguage);
   const isLandscape = layoutMode === 'landscape';
   const containerWidthClasses = isLandscape
     ? 'max-w-none px-4'
@@ -111,6 +110,15 @@ function App() {
       noticeTimerRef.current = null;
     }, NOTICE_DURATION_MS);
   }, []);
+
+  // 5초 이상 음성인식이 없으면 마이크 자동 정지
+  const handleAutoStop = useCallback(() => {
+    console.log('[App] Auto-stopping mic due to silence');
+    setActiveMic(null);
+    showNotice('5초간 음성이 없어 마이크가 자동으로 꺼졌습니다');
+  }, [showNotice]);
+  
+  const { transcript, resetTranscript, restartSession } = useSpeechRecognition(isListening, currentLanguage, handleAutoStop);
 
   const clearSilenceTimer = useCallback(() => {
     if (silenceTimerRef.current) {
@@ -198,7 +206,7 @@ function App() {
         const newSegment = text.slice(lastProcessedRef.current.length).trim();
         if (!newSegment) {
           console.log('[commitTranscript] Only duplicate content detected, skipping');
-          return;
+      return;
         }
         console.log('[commitTranscript] Detected merged transcript, using new segment:', newSegment);
         text = newSegment;
@@ -286,7 +294,7 @@ function App() {
       className={`flex-1 flex flex-col min-w-0 transition-colors duration-300 relative overflow-hidden ${
         variant === 'portrait'
           ? isDark 
-            ? 'bg-slate-800 rotate-180 border-b-2 border-cyan-400'
+          ? 'bg-slate-800 rotate-180 border-b-2 border-cyan-400'
             : 'bg-gray-100 rotate-180 border-b-2 border-blue-400'
           : isDark
             ? 'bg-slate-800/90 rounded-3xl border border-slate-700/60'
@@ -295,14 +303,14 @@ function App() {
     >
       {/* 세로모드에서만 언어 선택기 표시 (가로모드는 외부에서 고정 위치로 표시) */}
       {variant === 'portrait' && (
-        <div className="absolute top-4 left-4 z-20">
-          <LanguageSelector
-            label="Partner"
-            selectedLanguage={partnerLanguage}
-            onSelectLanguage={setPartnerLanguage}
+      <div className="absolute top-4 left-4 z-20">
+        <LanguageSelector
+          label="Partner"
+          selectedLanguage={partnerLanguage}
+          onSelectLanguage={setPartnerLanguage}
             isDark={isDark}
-          />
-        </div>
+        />
+      </div>
       )}
 
       <div className={`flex-1 overflow-hidden px-4 ${variant === 'portrait' ? 'pt-10 pb-12' : 'pt-10 pb-10'}`}>
@@ -393,15 +401,15 @@ function App() {
 
       {/* 세로모드에서만 언어 선택기 표시 (가로모드는 외부에서 고정 위치로 표시) */}
       {variant === 'portrait' && (
-        <div className="absolute top-4 right-4 z-20">
-          <LanguageSelector
-            label="Me"
-            selectedLanguage={myLanguage}
-            onSelectLanguage={setMyLanguage}
-            isInverted
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSelector
+          label="Me"
+          selectedLanguage={myLanguage}
+          onSelectLanguage={setMyLanguage}
+          isInverted
             isDark={isDark}
-          />
-        </div>
+        />
+      </div>
       )}
     </div>
   );

@@ -51,14 +51,14 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, onDelete,
                     ${shouldAlignRight ? 'rounded-tr-none' : 'rounded-tl-none'}
                 `}
             >
-                {/* 삭제 버튼 */}
+                {/* 삭제 버튼 - 모바일에서도 항상 표시 */}
                 {onDelete && (
                     <button
                         onClick={handleDelete}
-                        className={`absolute -top-2 -right-2 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
+                        className={`absolute -top-2 -right-2 p-1.5 rounded-full transition-colors duration-200 ${
                             isDark 
-                                ? 'bg-slate-600 hover:bg-red-500 text-white'
-                                : 'bg-gray-300 hover:bg-red-500 text-gray-700 hover:text-white'
+                                ? 'bg-slate-600 hover:bg-red-500 active:bg-red-600 text-white'
+                                : 'bg-gray-300 hover:bg-red-500 active:bg-red-600 text-gray-700 hover:text-white active:text-white'
                         }`}
                         title="삭제"
                     >

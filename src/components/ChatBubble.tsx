@@ -51,11 +51,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, onDelete,
                     ${shouldAlignRight ? 'rounded-tr-none' : 'rounded-tl-none'}
                 `}
             >
-                {/* 삭제 버튼 - 항상 왼쪽에 배치, 은은한 스타일 */}
+                {/* 삭제 버튼 - 왼쪽 바깥 중앙에 배치, 은은한 스타일 */}
                 {onDelete && (
                     <button
                         onClick={handleDelete}
-                        className={`absolute -top-1.5 -left-1.5 p-1 rounded-full transition-all duration-200 opacity-40 hover:opacity-100 active:opacity-100 ${
+                        className={`absolute top-1/2 -translate-y-1/2 -left-3 p-1 rounded-full transition-all duration-200 opacity-40 hover:opacity-100 active:opacity-100 ${
                             isDark 
                                 ? 'bg-slate-500/80 hover:bg-red-500 active:bg-red-600 text-slate-300 hover:text-white'
                                 : 'bg-gray-400/60 hover:bg-red-500 active:bg-red-600 text-gray-500 hover:text-white'
